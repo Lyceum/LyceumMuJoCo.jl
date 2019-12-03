@@ -240,18 +240,20 @@ Step the simulation by `skip` steps, where `skip` defaults to `MJSim.skip`.
 State-dependent controls (e.g. MJSim.d.{ctrl, xfrc_applied, qfrc_applied})
 should be set before calling `step!`.
 """
-function step!(sim::MJSim, skip::Integer=sim.skip)
+function step!(sim::MJSim)
     # According to MuJoCo docs order must be:
     # 1. mj_step1
     # 2. set_{ctrl, xfrc_applied, qfrc_applied}
     # 3. mj_step2
     # This implies user should call setaction! then step!
-    for _=1:skip
+    for _=1:sim.skip
         mj_step2(sim.m, sim.d)
         mj_step1(sim.m, sim.d)
     end
     sim
 end
+
+step!(sim::MJSim, a) = (setaction!(sim, a); step!(sim))
 
 
 
