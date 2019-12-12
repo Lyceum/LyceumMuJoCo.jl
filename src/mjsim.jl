@@ -2,6 +2,9 @@
 #### Core interface
 ####
 
+const MJSTATE_FIELDS = (:time, :qpos, :qvel, :act, :mocap_pos, :mocap_quat, :userdata, :qacc_warmstart)
+const MJACTION_FIELDS = (:ctrl, :qfrc_applied, :xfrc_applied)
+
 struct MJSimParameters
     modelpath::String
     args::Tuple
@@ -50,16 +53,11 @@ function MJSim(m::jlModel, d::jlData; skip::Integer=1)
 
     m_named, d_named = namify(m, d)
 
-    statespace = MultiShape(
-        time = ScalarShape(mjtNum),
-        qpos = VectorShape(mjtNum, m.nq),
-        qvel = VectorShape(mjtNum, m.nv),
-        act = VectorShape(mjtNum, m.na),
-        qacc_warmstart = VectorShape(mjtNum, m.nv),
-        mocap_pos = MatrixShape(mjtNum, m.nmocap, 3),
-		mocap_quat = MatrixShape(mjtNum, m.nmocap, 4),
-        userdata = VectorShape(mjtNum, m.nuserdata)
-    )
+    nameshapes = map(MJSTATE_FIELDS) do name
+        field = getproperty(d, name)
+        name => Shape(eltype(field), size(field)...)
+    end
+    statespace = MultiShape(nameshapes...)
 
     if m.nsensor > 0
         names, shapes = [], []
@@ -77,22 +75,21 @@ function MJSim(m::jlModel, d::jlData; skip::Integer=1)
     end
 
     if m.nu > 0
-        names, shapes = [], []
         clampctrl = !jl_disabled(m, MJCore.mjDSBL_CLAMPCTRL)
-        for id = 1:m.nu
+        nameshapes = map(1:m.nu) do id
             name = jl_id2name(m, MJCore.mjOBJ_ACTUATOR, id)
             name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
-            shape = ScalarShape(mjtNum) #TODO boundedshape
-            push!(names, name)
-            push!(shapes, shape)
+            name => ScalarShape(mjtNum) #TODO boundedshape
         end
-        actionspace = MultiShape(NamedTuple{Tuple(names)}(Tuple(shapes)))
+        actionspace = MultiShape(nameshapes...)
     else
         actionspace = VectorShape(mjtNum, 0)
     end
 
-    initstate = reduce(vcat,
-        (d.time, d.qpos, d.qvel, d.act, d.qacc_warmstart, vec(d.mocap_pos), vec(d.mocap_quat), d.userdata))
+    initstate = mapreduce(vcat, MJSTATE_FIELDS) do name
+        field = getproperty(d, name)
+        ndims(field) > 1 ? vec(field) : field
+    end
 
 	sim = MJSim(m, d, m_named, d_named,
 		statespace, sensorspace, actionspace,
@@ -138,13 +135,21 @@ Base.show(io::IO, sim::Union{MJSim, Type{<:MJSim}}) = print(io, "MJSim")
     @uviews state begin
         shaped = ms(state)
         @inbounds shaped.time = sim.d.time
-        @inbounds _maybecopyto!(Length(ms.qpos), shaped.qpos, sim.d.qpos)
-        @inbounds _maybecopyto!(Length(ms.qvel), shaped.qvel, sim.d.qvel)
-        @inbounds _maybecopyto!(Length(ms.act), shaped.act, sim.d.act)
-        @inbounds _maybecopyto!(Length(ms.qacc_warmstart), shaped.qacc_warmstart, sim.d.qacc_warmstart)
-        @inbounds _maybecopyto!(Length(ms.mocap_pos), shaped.mocap_pos, sim.d.mocap_pos)
-        @inbounds _maybecopyto!(Length(ms.mocap_quat), shaped.mocap_quat, sim.d.mocap_quat)
-        @inbounds _maybecopyto!(Length(ms.userdata), shaped.userdata, sim.d.userdata)
+        #@inbounds _maybecopyto!(Length(ms.qpos), shaped.qpos, sim.d.qpos)
+        #@inbounds _maybecopyto!(Length(ms.qvel), shaped.qvel, sim.d.qvel)
+        #@inbounds _maybecopyto!(Length(ms.act), shaped.act, sim.d.act)
+        #@inbounds _maybecopyto!(Length(ms.mocap_pos), shaped.mocap_pos, sim.d.mocap_pos)
+        #@inbounds _maybecopyto!(Length(ms.mocap_quat), shaped.mocap_quat, sim.d.mocap_quat)
+        #@inbounds _maybecopyto!(Length(ms.userdata), shaped.userdata, sim.d.userdata)
+        #@inbounds _maybecopyto!(Length(ms.qacc_warmstart), shaped.qacc_warmstart, sim.d.qacc_warmstart)
+
+        @inbounds copyto!(shaped.qpos, sim.d.qpos)
+        @inbounds copyto!(shaped.qvel, sim.d.qvel)
+        @inbounds copyto!(shaped.act, sim.d.act)
+        @inbounds copyto!(shaped.mocap_pos, sim.d.mocap_pos)
+        @inbounds copyto!(shaped.mocap_quat, sim.d.mocap_quat)
+        @inbounds copyto!(shaped.userdata, sim.d.userdata)
+        @inbounds copyto!(shaped.qacc_warmstart, sim.d.qacc_warmstart)
     end
     state
 end
@@ -160,13 +165,22 @@ getstate(sim::MJSim) = (s = allocate(statespace(sim)); getstate!(s, sim); s)
     @uviews state begin
         shaped = ms(state)
         @inbounds sim.d.time = shaped.time
-        @inbounds _maybecopyto!(Length(ms.qpos), sim.d.qpos, shaped.qpos)
-        @inbounds _maybecopyto!(Length(ms.qvel), sim.d.qvel, shaped.qvel)
-        @inbounds _maybecopyto!(Length(ms.act), sim.d.act, shaped.act)
-        @inbounds _maybecopyto!(Length(ms.qacc_warmstart), sim.d.qacc_warmstart, shaped.qacc_warmstart)
-        @inbounds _maybecopyto!(Length(ms.mocap_pos), sim.d.mocap_pos, shaped.mocap_pos)
-        @inbounds _maybecopyto!(Length(ms.mocap_quat), sim.d.mocap_quat, shaped.mocap_quat)
-        @inbounds _maybecopyto!(Length(ms.userdata), sim.d.userdata, shaped.userdata)
+        @inbounds copyto!(sim.d.qpos, shaped.qpos)
+        @inbounds copyto!(sim.d.qvel, shaped.qvel)
+        @inbounds copyto!(sim.d.act, shaped.act)
+        @inbounds copyto!(sim.d.mocap_pos, shaped.mocap_pos)
+        @inbounds copyto!(sim.d.mocap_quat, shaped.mocap_quat)
+        @inbounds copyto!(sim.d.userdata, shaped.userdata)
+        @inbounds copyto!(sim.d.qacc_warmstart, shaped.qacc_warmstart)
+
+        #@inbounds _maybecopyto!(Length(ms.qpos), sim.d.qpos, shaped.qpos)
+        #@inbounds _maybecopyto!(Length(ms.qvel), sim.d.qvel, shaped.qvel)
+        #@inbounds _maybecopyto!(Length(ms.act), sim.d.act, shaped.act)
+        #@inbounds _maybecopyto!(Length(ms.mocap_pos), sim.d.mocap_pos, shaped.mocap_pos)
+        #@inbounds _maybecopyto!(Length(ms.mocap_quat), sim.d.mocap_quat, shaped.mocap_quat)
+        #@inbounds _maybecopyto!(Length(ms.userdata), sim.d.userdata, shaped.userdata)
+        #@inbounds _maybecopyto!(Length(ms.qacc_warmstart), sim.d.qacc_warmstart, shaped.qacc_warmstart)
+
     end
     sim
 end
