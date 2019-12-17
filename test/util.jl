@@ -21,11 +21,15 @@ end
 
 function rollout!(e, traj)
     for t=1:ROLLOUT_HORIZON
-        setaction!(e, view(traj.acts, :, t))
-        getstate!(view(traj.states, :, t), e)
-        getobs!(view(traj.obses, :, t), e)
-        traj.rews[t] = getreward(e)
-        traj.evals[t] = geteval(e)
+        st = view(traj.states, :, t)
+        at = view(traj.acts, :, t)
+        ot = view(traj.obses, :, t)
+
+        getstate!(st, e)
+        getobs!(ot, e)
+        setaction!(e, at)
+        traj.rews[t] = getreward(st, at, ot, e)
+        traj.evals[t] = geteval(st, at, ot, e)
         step!(e)
     end
     traj
@@ -40,7 +44,7 @@ function test_group(group)
 end
 
 function test_env(etype::Type{<:AbstractMuJoCoEnv}, args...; kwargs...)
-    makeenv() = first(sharedmemory_envs(etype, 1, args...; kwargs...))
+    makeenv() = etype(args...; kwargs...)
     @testset "Basic Interface" begin
         e = makeenv()
 
@@ -58,6 +62,12 @@ function test_env(etype::Type{<:AbstractMuJoCoEnv}, args...; kwargs...)
         asp = actionspace(e)
         rsp = rewardspace(e)
         esp = evaluationspace(e)
+
+        @testset "$(string(nameof(spacefn)))" for (spacefn, fns) in pairs(SPACE_TO_FUNCS)
+            space, x = spacefn(e), fns.get(e)
+            @test eltype(x) == eltype(space)
+            @test axes(x) == axes(space)
+        end
 
         @test ndims(ssp) == 1
         @test ndims(osp) == 1

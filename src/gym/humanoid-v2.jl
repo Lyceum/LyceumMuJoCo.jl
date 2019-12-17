@@ -23,7 +23,9 @@ end
 
 HumanoidV2() = HumanoidV2(MJSim(MJSimParameters(HumanoidV2)))
 
-MJSimParameters(::Type{<:HumanoidV2}) = MJSimParameters(joinpath(@__DIR__, "humanoid-v2.xml"), skip=5)
+function MJSimParameters(::Type{<:HumanoidV2})
+    MJSimParameters(modelpath=joinpath(@__DIR__, "humanoid-v2.xml"), skip=5)
+end
 
 getsim(env::HumanoidV2) = env.sim
 
