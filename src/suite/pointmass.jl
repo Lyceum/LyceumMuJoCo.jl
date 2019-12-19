@@ -11,12 +11,12 @@ struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnv
     end
 end
 
-function LyceumBase.thread_construct(::Type{PointMass}, N::Integer)
+function thread_constructor(::Type{PointMass}, N::Integer)
     modelpath = joinpath(@__DIR__, "pointmass.xml")
-    Tuple(PointMass(s) for s in thread_construct(MJSim, N, modelpath, skip=1))
+    Tuple(PointMass(s) for s in thread_constructor(MJSim, N, modelpath, skip=1))
 end
 
-PointMass() = first(thread_construct(PointMass, 1))
+PointMass() = first(thread_constructor(PointMass, 1))
 
 
 getsim(env::PointMass) = env.sim

@@ -9,19 +9,19 @@ const SPACE_TO_FUNCS = Dict(
     statespace => (get=getstate, getbang=getstate!),
     actionspace => (get=getaction, getbang=getaction!, setbang=setaction!),
     observationspace => (get=getobs, getbang=getobs!),
-    rewardspace => (get=getreward, ),
-    evaluationspace => (get=geteval, )
+    #rewardspace => (get=getreward, ),
+    #evaluationspace => (get=geteval, )
 )
 
 const LYCEUM_SUITE = [
     (LyceumMuJoCo.PointMass, (), ())
 ]
 
-#const GYM_SUITE = [
-#    (LyceumMuJoCo.HumanoidV2, (), ()),
-#    (LyceumMuJoCo.SwimmerV2, (), ()),
-#    (LyceumMuJoCo.HopperV2, (), ()),
-#]
+const GYM_SUITE = [
+    #(LyceumMuJoCo.HumanoidV2, (), ()),
+    #(LyceumMuJoCo.SwimmerV2, (), ()),
+    (LyceumMuJoCo.HopperV2, (), ()),
+]
 
 include("util.jl")
 
@@ -33,7 +33,7 @@ include("util.jl")
 
     @testset "Environments" begin
         @testset "Lyceum Suite" begin test_group(LYCEUM_SUITE) end
-        #@testset "Gym Suite" begin test_group(GYM_SUITE) end
+        @testset "Gym Suite" begin test_group(GYM_SUITE) end
     end
 
 end

@@ -13,16 +13,19 @@ mutable struct HopperV2{SIM, S, O} <: AbstractMuJoCoEnv
     end
 end
 
+HopperV2() = first(thread_constructor(HopperV2, 1))
 
-HopperV2() = HopperV2(MJSim(MJSimParameters(HopperV2)))
+function thread_constructor(::Type{<:HopperV2}, N::Integer)
+    modelpath = joinpath(@__DIR__, "hopper-v2.xml")
+    Tuple(HopperV2(s) for s in thread_constructor(MJSim, N, modelpath, skip=4))
+end
 
-MJSimParameters(::Type{<:HopperV2}) = MJSimParameters(joinpath(@__DIR__, "hopper-v2.xml"), skip=4)
 
-LyceumMuJoCo.getsim(env::HopperV2) = env.sim
+getsim(env::HopperV2) = env.sim
 
 
-LyceumBase.statespace(env::HopperV2) = env.statespace
-function LyceumBase.getstate!(s, env::HopperV2)
+statespace(env::HopperV2) = env.statespace
+function getstate!(s, env::HopperV2)
     @uviews s begin
         simstate = view(s, 1:length(statespace(env.sim)))
         getstate!(simstate, env.sim)
@@ -32,8 +35,8 @@ function LyceumBase.getstate!(s, env::HopperV2)
 end
 
 
-LyceumMuJoCo.observationspace(env::HopperV2) = env.observationspace
-function LyceumMuJoCo.getobs!(o, env::HopperV2)
+observationspace(env::HopperV2) = env.observationspace
+function getobs!(o, env::HopperV2)
     nq = env.sim.m.nq
     qpos = env.sim.d.qpos
     qvel = env.sim.d.qvel
@@ -45,7 +48,7 @@ function LyceumMuJoCo.getobs!(o, env::HopperV2)
 end
 
 
-function LyceumMuJoCo.getreward(env::HopperV2)
+function getreward(env::HopperV2)
     qpos = env.sim.d.qpos
     qvel = env.sim.d.qvel
     x, height, ang = uview(qpos, 1:3)
@@ -58,13 +61,13 @@ function LyceumMuJoCo.getreward(env::HopperV2)
 end
 
 
-function LyceumBase.reset!(env::HopperV2)
+function reset!(env::HopperV2)
     reset!(env.sim)
     env.lastx = _getx(env.sim)
     env
 end
 
-function LyceumBase.reset!(env::HopperV2, s)
+function reset!(env::HopperV2, s)
     @uviews s begin
         simstate = view(s, 1:length(statespace(env.sim)))
         reset!(env.sim, simstate)
@@ -73,7 +76,7 @@ function LyceumBase.reset!(env::HopperV2, s)
     env
 end
 
-function LyceumMuJoCo.randreset!(env::HopperV2)
+function randreset!(env::HopperV2)
     reset!(env)
     env.sim.d.qpos .+= rand.(env.randreset_distribution)
     env.sim.d.qvel .+= rand.(env.randreset_distribution)
@@ -83,7 +86,7 @@ function LyceumMuJoCo.randreset!(env::HopperV2)
 end
 
 
-function LyceumMuJoCo.step!(env::HopperV2)
+function step!(env::HopperV2)
     env.lastx = _getx(env.sim)
     step!(env.sim)
     env
@@ -103,7 +106,7 @@ function isdone(env::HopperV2)
     done
 end
 
-LyceumMuJoCo.geteval(env::HopperV2) = _getx(env.sim)
+geteval(env::HopperV2) = _getx(env.sim)
 
 _getx(sim::MJSim) = sim.d.qpos[1]
 _getheight(sim::MJSim) = sim.d.qpos[2]

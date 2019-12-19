@@ -97,7 +97,7 @@ function MJSim(modelpath::String; skip::Integer = DEFAULT_SKIP)
     MJSim(m, d, skip=skip)
 end
 
-function LyceumBase.thread_construct(::Type{MJSim}, N::Integer, m::jlModel; skip::Integer = DEFAULT_SKIP, can_share_model::Bool=DEFAULT_CAN_SHARE_MODEL)
+function LyceumBase.thread_constructor(::Type{MJSim}, N::Integer, m::jlModel; skip::Integer = DEFAULT_SKIP, can_share_model::Bool=DEFAULT_CAN_SHARE_MODEL)
     N > 0 || throw(ArgumentError("N must be > 0"))
     if can_share_model
         ntuple(_ -> MJSim(m, jlData(m), skip=skip), N)
@@ -109,8 +109,8 @@ function LyceumBase.thread_construct(::Type{MJSim}, N::Integer, m::jlModel; skip
     end
 end
 
-function LyceumBase.thread_construct(::Type{MJSim}, N::Integer, modelpath::AbstractString; kwargs...)
-    thread_construct(MJSim, N, jlModel(modelpath); kwargs...)
+function LyceumBase.thread_constructor(::Type{MJSim}, N::Integer, modelpath::AbstractString; kwargs...)
+    thread_constructor(MJSim, N, jlModel(modelpath); kwargs...)
 end
 
 

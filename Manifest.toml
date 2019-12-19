@@ -31,9 +31,9 @@ version = "0.2.4"
 
 [[BangBang]]
 deps = ["Compat", "ConstructionBase", "Future", "InitialValues", "LinearAlgebra", "Requires", "Setfield", "Tables", "ZygoteRules"]
-git-tree-sha1 = "ac163c36e260b51faf9efb65ac67ecc512d0aeec"
+git-tree-sha1 = "494dd364d8e020dd9afd0e3b54be7b09e72d4d96"
 uuid = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
-version = "0.3.7"
+version = "0.3.9"
 
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -207,8 +207,8 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LyceumBase]]
-deps = ["Adapt", "Dates", "ElasticArrays", "EllipsisNotation", "Future", "InteractiveUtils", "JLSO", "LibGit2", "LinearAlgebra", "Logging", "MacroTools", "Parameters", "Pkg", "Random", "Shapes", "StaticArrays", "Statistics", "UnicodePlots", "UniversalLogger", "UnsafeArrays"]
-git-tree-sha1 = "453499625deeeeac95f07a695dcede8c53f3d810"
+deps = ["Adapt", "Dates", "ElasticArrays", "EllipsisNotation", "Future", "InteractiveUtils", "JLSO", "LibGit2", "LinearAlgebra", "Logging", "MacroTools", "Parameters", "Pkg", "Random", "Reexport", "Shapes", "StaticArrays", "Statistics", "UnicodePlots", "UniversalLogger", "UnsafeArrays"]
+path = "/home/colinxs/workspace/juliadev/LyceumBase"
 uuid = "db31fed1-ca1e-4084-8a49-12fae1996a55"
 version = "0.1.0"
 
@@ -351,9 +351,9 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[Setfield]]
 deps = ["ConstructionBase", "Future", "MacroTools", "Requires"]
-git-tree-sha1 = "161fc4aaee52eabf584d9506d2143d83f60411c2"
+git-tree-sha1 = "ed5045722fcdacf263a90fb9eb9f258598ccebac"
 uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
-version = "0.5.3"
+version = "0.5.4"
 
 [[Shapes]]
 deps = ["Adapt", "MacroTools", "Random", "Requires", "StaticArrays", "UnsafeArrays"]
@@ -404,9 +404,9 @@ version = "0.32.0"
 
 [[StatsFuns]]
 deps = ["Rmath", "SpecialFunctions"]
-git-tree-sha1 = "938f2520e6c093aaf5a7e7c38489e03c27a8c136"
+git-tree-sha1 = "79982835d2ff3970685cb704500909c94189bde9"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "0.9.2"
+version = "0.9.3"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]

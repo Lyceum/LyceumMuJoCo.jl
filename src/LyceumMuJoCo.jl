@@ -35,7 +35,7 @@ import LyceumBase: statespace,
                    timestep,
                    effective_timestep,
 
-                   thread_construct
+                   thread_constructor
 
 export # AbstractMuJoCoEnv interface (an addition to AbstractEnv's interface)
        AbstractMuJoCoEnv,
@@ -63,7 +63,7 @@ include("mjsim.jl")
 
 abstract type AbstractMuJoCoEnv <: AbstractEnv end
 @mustimplement getsim(env::AbstractMuJoCoEnv) # TODO document "opt in" behavior
-@mustimplement thread_construct(::Type{<:AbstractMuJoCoEnv}, N::Integer, args...; kwargs...)
+@mustimplement thread_constructor(::Type{<:AbstractMuJoCoEnv}, N::Integer, args...; kwargs...)
 
 @inline statespace(env::AbstractMuJoCoEnv) = statespace(getsim(env))
 @inline getstate!(s, env::AbstractMuJoCoEnv) = getstate!(s, getsim(env))
@@ -94,6 +94,6 @@ include("suite/pointmass.jl")
 
 #include("gym/humanoid-v2.jl")
 #include("gym/swimmer-v2.jl")
-#include("gym/hopper-v2.jl")
+include("gym/hopper-v2.jl")
 
 end # module
