@@ -51,6 +51,17 @@ struct MJSim{MN, DN, S, SE, A}
     actionspace::A
 end
 
+"""
+    MJSim(m::jlModel, d::jlData; skip::Integer=1)
+
+Construct an MJSim struct with a user specified jlModel and jlData. See MuJoCo.jl for more info on
+these structures.
+
+'skip' is defined as the number of times the simulation is integrated. The ctrl field in jlData is
+held as the same value for each integration steps. The effective timestep of the simulation thus becomes
+
+skip * m.opt.timestep
+"""
 function MJSim(m::jlModel, d::jlData; skip::Integer = DEFAULT_SKIP)
     check_skip(skip)
 
@@ -98,6 +109,13 @@ function MJSim(m::jlModel, d::jlData; skip::Integer = DEFAULT_SKIP)
     forward!(sim)
 end
 
+"""
+    MJSim(modelpath::String, args...; kwargs...)
+
+This function automatically constructs a jlModel, jlData for a given MuJoCo XML model file path.
+
+args, kwargs allows for customized sim constructors to be created. For instance, a function may be defined for an environment that allows for dynamic model parameter randomization at load time; the fields and values can be passed in thusly.
+"""
 function MJSim(modelpath::String; skip::Integer = DEFAULT_SKIP)
     m = jlModel(modelpath)
     d = jlData(m)
@@ -245,6 +263,14 @@ function step!(sim::MJSim, skip::Integer=sim.skip)
 end
 
 
+"""
+    zeroctrl!(sim::MJSim) = (fill!(sim.d.ctrl, zero(mjtNum)); sim)
+
+Zero out the mjData fields thats contribute to forward dynamics calculations, namely:
+   d.ctrl
+   d.qfrc_applied
+   d.xfrc_applied
+"""
 @inline zeroctrl!(sim::MJSim) = forwardskip!(zeroctrl_nofwd!(sim), MJCore.mjSTAGE_VEL)
 @inline zeroctrl_nofwd!(sim::MJSim) = (fill!(sim.d.ctrl, zero(mjtNum)); sim)
 
@@ -256,7 +282,11 @@ end
     sim
 end
 
+"""
+    masscenter(sim::MJSim)
 
+Calculate the center of mass by summing up the Cartesian coordinates of each body.
+"""
 function masscenter(sim::MJSim)
     mcntr = zeros(SVector{3, Float64})
     mtotal = 0.0
@@ -271,16 +301,42 @@ function masscenter(sim::MJSim)
     mcntr / mtotal
 end
 
+"""
+    forward!(sim::MJSim) = (mj_forward(sim.m, sim.d); sim)
+"""
 @inline forward!(sim::MJSim) = (mj_forward(sim.m, sim.d); sim)
 
+"""
+    forwardskip!(sim::MJSim, skipstage::MJCore.mjtStage=MJCore.mjSTAGE_NONE, skipsensor::Bool=false)
+
+Wraps mj_forwardSkip, to allow for optimization of forward dynamics calculations by skipping appropriate calculation steps.
+
+The enum selecting for which stages are skipped are:
+
+@cenum mjtStage::Cint begin     # computation stage
+    mjSTAGE_NONE = 0            # no computations
+    mjSTAGE_POS                 # position-dependent computations
+    mjSTAGE_VEL                 # velocity-dependent computations
+    mjSTAGE_ACC                 # acceleration/force-dependent computations
+end
+
+skipsensor == true will avoid the sensor computations.
+
+More information can be found at http://mujoco.org/book/programming.html under 'Forward Dynamics'
+"""
 @inline function forwardskip!(sim::MJSim, skipstage::MJCore.mjtStage=MJCore.mjSTAGE_NONE, skipsensor::Bool=false)
     mj_forwardSkip(sim.m, sim.d, skipstage, skipsensor)
     sim
 end
 
-
+"""
+    timestep(sim::MJSim) = sim.m.opt.timestep
+"""
 @inline timestep(sim::MJSim) = sim.m.opt.timestep * sim.skip
 
+"""
+    Base.time(sim::MJSim) = sim.d.time
+"""
 @inline Base.time(sim::MJSim) = sim.d.time
 
 @inline getsim(sim::MJSim) = sim
@@ -290,3 +346,5 @@ Base.show(io::IO, ::MIME"text/plain", sim::Union{MJSim, Type{<:MJSim}}) = show(i
 Base.show(io::IO, sim::Union{MJSim, Type{<:MJSim}}) = print(io, "MJSim")
 
 @inline check_skip(skip) = skip > 0 || throw(ArgumentError("`skip` must be > 0"))
+
+#TODO inverse and inverseskip
