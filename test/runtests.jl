@@ -2,16 +2,6 @@ using LyceumMuJoCo, LyceumBase
 using Test, Random, Shapes, Pkg, LinearAlgebra, BenchmarkTools
 using MuJoCo: TESTMODELXML
 
-const ROLLOUT_HORIZON = 50
-
-const SPACE_TO_FUNCS = Dict(
-    statespace => (get=getstate, getbang=getstate!),
-    actionspace => (get=getaction, getbang=getaction!, setbang=setaction!),
-    obsspace => (get=getobs, getbang=getobs!),
-    #rewardspace => (get=getreward, ),
-    #evalspace => (get=geteval, )
-)
-
 const LYCEUM_SUITE = [
     (LyceumMuJoCo.PointMass, (), ())
 ]
@@ -22,9 +12,12 @@ const GYM_SUITE = [
     #(LyceumMuJoCo.HopperV2, (), ()),
 ]
 
-include("util.jl")
 
-
+function test_group(group)
+    @testset "Testing $etype\n    Args: $args.\n    Kwargs: $kwargs" for (etype, args, kwargs) in group
+        LyceumBase.test_env(etype, args...; kwargs...)
+    end
+end
 
 @testset "LyceumMuJoCo.jl" begin
 
@@ -32,7 +25,7 @@ include("util.jl")
 
     @testset "Environments" begin
         @testset "Lyceum Suite" begin test_group(LYCEUM_SUITE) end
-        @testset "Gym Suite" begin test_group(GYM_SUITE) end
+        #@testset "Gym Suite" begin test_group(GYM_SUITE) end
     end
 
 end
