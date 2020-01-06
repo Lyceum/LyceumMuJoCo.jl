@@ -27,7 +27,7 @@ PointMass() = first(tconstruct(PointMass, 1))
 @inline obsspace(env::PointMass) = env.obsspace
 
 @propagate_inbounds function getobs!(obs, env::PointMass)
-    @boundscheck check_axes(obsspace(env), obs)
+    @boundscheck checkaxes(obsspace(env), obs)
     dn = env.sim.dn
     shaped = obsspace(env)(obs)
     @uviews shaped @inbounds begin
@@ -41,7 +41,7 @@ end
 
 
 @propagate_inbounds function getreward(::Any, ::Any, obs, env::PointMass)
-    @boundscheck check_axes(obsspace(env), obs)
+    @boundscheck checkaxes(obsspace(env), obs)
     shaped = obsspace(env)(obs)
     @uviews shaped @inbounds begin
         1.0 - euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
@@ -51,7 +51,7 @@ end
 
 
 @propagate_inbounds function geteval(::Any, ::Any, obs, env::PointMass)
-    @boundscheck check_axes(obsspace(env), obs)
+    @boundscheck checkaxes(obsspace(env), obs)
     shaped = env.obsspace(obs)
     @uviews shaped @inbounds begin
         euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)

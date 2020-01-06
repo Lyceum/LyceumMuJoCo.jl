@@ -123,7 +123,7 @@ end
 @inline statespace(sim::MJSim) = sim.statespace
 
 @propagate_inbounds function getstate!(state::RealVec, sim::MJSim)
-    @boundscheck check_axes(statespace(sim), state)
+    @boundscheck checkaxes(statespace(sim), state)
     shaped = statespace(sim)(state)
     @uviews shaped begin _unsafe_copystate!(shaped, sim.d) end
     state
@@ -136,7 +136,7 @@ end
 end
 
 @propagate_inbounds function setstate_nofwd!(sim::MJSim, state::RealVec)
-    @boundscheck check_axes(statespace(sim), state)
+    @boundscheck checkaxes(statespace(sim), state)
     shaped = statespace(sim)(state)
     @uviews shaped begin _unsafe_copystate!(sim.d, shaped) end
     sim
@@ -159,7 +159,7 @@ end
 @inline sensorspace(sim::MJSim) = sim.sensorspace
 
 @propagate_inbounds function getsensor!(sensordata::RealVec, sim::MJSim)
-    @boundscheck check_axes(sensorspace(sim), sensordata)
+    @boundscheck checkaxes(sensorspace(sim), sensordata)
     @inbounds copyto!(sensordata, sim.d.sensordata)
 end
 
@@ -170,7 +170,7 @@ end
 @inline actionspace(sim::MJSim) = sim.actionspace
 
 @propagate_inbounds function getaction!(action::RealVec, sim::MJSim)
-    @boundscheck check_axes(actionspace(sim), action)
+    @boundscheck checkaxes(actionspace(sim), action)
     @inbounds copyto!(action, sim.d.ctrl)
 end
 
@@ -181,7 +181,7 @@ end
 end
 
 @propagate_inbounds function setaction_nofwd!(sim::MJSim, action::RealVec)
-    @boundscheck check_axes(actionspace(sim), action)
+    @boundscheck checkaxes(actionspace(sim), action)
     @inbounds copyto!(sim.d.ctrl, action)
     sim
 end
