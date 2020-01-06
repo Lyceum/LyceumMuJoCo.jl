@@ -1,6 +1,6 @@
 module LyceumMuJoCo
 
-using UnsafeArrays, Shapes, StaticArrays, Distributions, Reexport, Random, LinearAlgebra
+using UnsafeArrays, Shapes, StaticArrays, Distributions, Reexport, Random, LinearAlgebra, Distances
 
 using Base: @propagate_inbounds
 using MuJoCo
@@ -11,9 +11,10 @@ using LyceumBase: RealVec, @mustimplement
 
 import LyceumBase: statespace,
                    getstate!,
+                   setstate!,
                    getstate,
 
-                   observationspace,
+                   obsspace,
                    getobs!,
                    getobs,
 
@@ -25,7 +26,7 @@ import LyceumBase: statespace,
                    rewardspace,
                    getreward,
 
-                   evaluationspace,
+                   evalspace,
                    geteval,
 
                    reset!,
@@ -33,11 +34,10 @@ import LyceumBase: statespace,
                    step!,
                    isdone,
                    timestep,
-                   effective_timestep,
 
-                   thread_constructor
+                   tconstruct
 
-export # AbstractMuJoCoEnv interface (an addition to AbstractEnv's interface)
+export # AbstractMuJoCoEnv interface (an addition to AbstractEnvironment's interface)
        AbstractMuJoCoEnv,
        getsim,
 
@@ -61,29 +61,60 @@ include("mjsim.jl")
 #### AbstractMuJoCoEnv Interface
 ####
 
-abstract type AbstractMuJoCoEnv <: AbstractEnv end
-@mustimplement getsim(env::AbstractMuJoCoEnv) # TODO document "opt in" behavior
-@mustimplement thread_constructor(::Type{<:AbstractMuJoCoEnv}, N::Integer, args...; kwargs...)
+abstract type AbstractMuJoCoEnv <: AbstractEnvironment end
 
-@inline statespace(env::AbstractMuJoCoEnv) = statespace(getsim(env))
-@inline getstate!(s, env::AbstractMuJoCoEnv) = getstate!(s, getsim(env))
 
-@inline observationspace(env::AbstractMuJoCoEnv) = sensorspace(getsim(env))
-@inline getobs!(o, env::AbstractMuJoCoEnv) = getsensor!(o, getsim(env))
 
-@inline actionspace(env::AbstractMuJoCoEnv) = actionspace(getsim(env))
-@inline getaction!(a, env::AbstractMuJoCoEnv) = getaction!(a, getsim(env))
-@inline setaction!(env::AbstractMuJoCoEnv, a) = (setaction!(getsim(env), a); env)
 
-@inline reset!(env::AbstractMuJoCoEnv) = (reset!(getsim(env)); env)
-@inline reset!(env::AbstractMuJoCoEnv, s) = (reset!(getsim(env), s); env)
-@inline reset!(env::AbstractMuJoCoEnv, s, c) = (reset!(getsim(env), s, c); env)
+@propagate_inbounds statespace(env::AbstractMuJoCoEnv) = statespace(getsim(env))
 
-@inline step!(env::AbstractMuJoCoEnv) = (step!(getsim(env)); env)
+@propagate_inbounds function getstate!(state, env::AbstractMuJoCoEnv)
+    getstate!(state, getsim(env))
+    state
+end
 
-@inline timestep(env::AbstractMuJoCoEnv) = timestep(getsim(env))
-@inline effective_timestep(env::AbstractMuJoCoEnv) = effective_timestep(getsim(env))
-@inline Base.time(env::AbstractMuJoCoEnv) = time(getsim(env))
+@propagate_inbounds function setstate!(env::AbstractMuJoCoEnv, state)
+    setstate!(getsim(env), state)
+    env
+end
+
+
+
+
+@propagate_inbounds obsspace(env::AbstractMuJoCoEnv) = sensorspace(getsim(env))
+
+@propagate_inbounds getobs!(obs, env::AbstractMuJoCoEnv) = getsensor!(obs, getsim(env))
+
+
+
+
+@propagate_inbounds actionspace(env::AbstractMuJoCoEnv) = actionspace(getsim(env))
+
+@propagate_inbounds getaction!(a, env::AbstractMuJoCoEnv) = getaction!(a, getsim(env))
+
+@propagate_inbounds function setaction!(env::AbstractMuJoCoEnv, a)
+    setaction!(getsim(env), a)
+    env
+end
+
+
+
+
+@propagate_inbounds reset!(env::AbstractMuJoCoEnv) = (reset!(getsim(env)); env)
+
+
+
+@propagate_inbounds step!(env::AbstractMuJoCoEnv) = (step!(getsim(env)); env)
+
+
+
+@propagate_inbounds Base.time(env::AbstractMuJoCoEnv) = time(getsim(env))
+
+@propagate_inbounds timestep(env::AbstractMuJoCoEnv) = timestep(getsim(env))
+
+
+
+@mustimplement getsim(env::AbstractMuJoCoEnv)
 
 
 ####
@@ -94,6 +125,6 @@ include("suite/pointmass.jl")
 
 #include("gym/humanoid-v2.jl")
 #include("gym/swimmer-v2.jl")
-include("gym/hopper-v2.jl")
+#include("gym/hopper-v2.jl")
 
 end # module

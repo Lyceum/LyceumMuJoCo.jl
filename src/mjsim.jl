@@ -2,7 +2,8 @@
 #### Core interface
 ####
 
-const MJSTATE_FIELDS = (:time, :qpos, :qvel, :act, :mocap_pos, :mocap_quat, :userdata, :qacc_warmstart)
+#const MJSTATE_FIELDS = (:time, :qpos, :qvel, :act, :mocap_pos, :mocap_quat, :userdata, :qacc_warmstart)
+const MJSTATE_FIELDS = (:time, :qpos, :qvel, :act, :mocap_pos, :mocap_quat, :userdata)
 const MJACTION_FIELDS = (:ctrl, :qfrc_applied, :xfrc_applied)
 
 const DEFAULT_SKIP = 1
@@ -97,7 +98,7 @@ function MJSim(modelpath::String; skip::Integer = DEFAULT_SKIP)
     MJSim(m, d, skip=skip)
 end
 
-function LyceumBase.thread_constructor(::Type{MJSim}, N::Integer, m::jlModel; skip::Integer = DEFAULT_SKIP, can_share_model::Bool=DEFAULT_CAN_SHARE_MODEL)
+function LyceumBase.tconstruct(::Type{MJSim}, N::Integer, m::jlModel; skip::Integer = DEFAULT_SKIP, can_share_model::Bool=DEFAULT_CAN_SHARE_MODEL)
     N > 0 || throw(ArgumentError("N must be > 0"))
     if can_share_model
         ntuple(_ -> MJSim(m, jlData(m), skip=skip), N)
@@ -109,57 +110,48 @@ function LyceumBase.thread_constructor(::Type{MJSim}, N::Integer, m::jlModel; sk
     end
 end
 
-function LyceumBase.thread_constructor(::Type{MJSim}, N::Integer, modelpath::AbstractString; kwargs...)
-    thread_constructor(MJSim, N, jlModel(modelpath); kwargs...)
+function LyceumBase.tconstruct(::Type{MJSim}, N::Integer, modelpath::AbstractString; kwargs...)
+    tconstruct(MJSim, N, jlModel(modelpath); kwargs...)
 end
 
 
 
-@inline getsim(sim::MJSim) = sim # Used in LyceumViz.jl
+@inline getsim(sim::MJSim) = sim
 
 
 
 @inline statespace(sim::MJSim) = sim.statespace
 
 @propagate_inbounds function getstate!(state::RealVec, sim::MJSim)
-    ms = statespace(sim)
-    @boundscheck if axes(state) != axes(ms)
-        throw(ArgumentError("axes(state) must equal axes(statespace(sim))"))
-    end
-    shaped = ms(state)
-    @uviews shaped @inbounds begin
-        shaped.time = sim.d.time
-        copyto!(shaped.qpos, sim.d.qpos)
-        copyto!(shaped.qvel, sim.d.qvel)
-        copyto!(shaped.act, sim.d.act)
-        copyto!(shaped.mocap_pos, sim.d.mocap_pos)
-        copyto!(shaped.mocap_quat, sim.d.mocap_quat)
-        copyto!(shaped.userdata, sim.d.userdata)
-        copyto!(shaped.qacc_warmstart, sim.d.qacc_warmstart)
-    end
+    @boundscheck check_axes(statespace(sim), state)
+    shaped = statespace(sim)(state)
+    @uviews shaped begin _unsafe_copystate!(shaped, sim.d) end
     state
 end
 
-@inline getstate(sim::MJSim) = getstate!(allocate(statespace(sim)), sim)
+@propagate_inbounds getstate(sim::MJSim) = getstate!(allocate(statespace(sim)), sim)
 
 @propagate_inbounds function setstate!(sim::MJSim, state::RealVec)
-    ms = statespace(sim)
-    @boundscheck if axes(state) != axes(ms)
-        throw(ArgumentError("axes(state) must equal axes(statespace(sim))"))
-    end
+    forward!(setstate_nofwd!(sim, state))
+end
 
-    shaped = ms(state)
-    @uviews shaped @inbounds begin
-        sim.d.time = shaped.time
-        copyto!(sim.d.qpos, shaped.qpos)
-        copyto!(sim.d.qvel, shaped.qvel)
-        copyto!(sim.d.act, shaped.act)
-        copyto!(sim.d.mocap_pos, shaped.mocap_pos)
-        copyto!(sim.d.mocap_quat, shaped.mocap_quat)
-        copyto!(sim.d.userdata, shaped.userdata)
-        copyto!(sim.d.qacc_warmstart, shaped.qacc_warmstart)
-    end
+@propagate_inbounds function setstate_nofwd!(sim::MJSim, state::RealVec)
+    @boundscheck check_axes(statespace(sim), state)
+    shaped = statespace(sim)(state)
+    @uviews shaped begin _unsafe_copystate!(sim.d, shaped) end
     sim
+end
+
+@inline function _unsafe_copystate!(dst, src)
+    @inbounds dst.time = src.time
+    @inbounds copyto!(dst.qpos, src.qpos)
+    @inbounds copyto!(dst.qvel, src.qvel)
+    @inbounds copyto!(dst.act, src.act)
+    @inbounds copyto!(dst.mocap_pos, src.mocap_pos)
+    @inbounds copyto!(dst.mocap_quat, src.mocap_quat)
+    @inbounds copyto!(dst.userdata, src.userdata)
+    #@inbounds copyto!(dst.qacc_warmstart, src.qacc_warmstart)
+    dst
 end
 
 
@@ -167,46 +159,40 @@ end
 @inline sensorspace(sim::MJSim) = sim.sensorspace
 
 @propagate_inbounds function getsensor!(sensordata::RealVec, sim::MJSim)
-    @boundscheck if axes(sensordata) != axes(sensorspace(sim))
-        throw(ArgumentError("axes(sensordata) must equal axes(sensorspace(sim))"))
-    end
+    @boundscheck check_axes(sensorspace(sim), sensordata)
     @inbounds copyto!(sensordata, sim.d.sensordata)
 end
 
-@inline getsensor(sim::MJSim) = getsensor!(allocate(sim.sensorspace), sim)
+@propagate_inbounds getsensor(sim::MJSim) = getsensor!(allocate(sim.sensorspace), sim)
 
 
 
 @inline actionspace(sim::MJSim) = sim.actionspace
 
 @propagate_inbounds function getaction!(action::RealVec, sim::MJSim)
-    @boundscheck if axes(action) != axes(actionspace(sim))
-        throw(ArgumentError("axes(action) must equal axes(actionspace(sim))"))
-    end
+    @boundscheck check_axes(actionspace(sim), action)
     @inbounds copyto!(action, sim.d.ctrl)
 end
 
-getaction(sim::MJSim, action::RealVec) = getaction!(allocate(sim.actionspace), sim)
+@propagate_inbounds getaction(sim::MJSim, action::RealVec) = getaction!(allocate(sim.actionspace), sim)
 
 @propagate_inbounds function setaction!(sim::MJSim, action::RealVec)
-    @boundscheck if axes(action) != axes(actionspace(sim))
-        throw(ArgumentError("axes(action) must equal axes(actionspace(sim))"))
-    end
+    forwardskip!(setaction_nofwd!(sim, action), MJCore.mjSTAGE_VEL)
+end
+
+@propagate_inbounds function setaction_nofwd!(sim::MJSim, action::RealVec)
+    @boundscheck check_axes(actionspace(sim), action)
     @inbounds copyto!(sim.d.ctrl, action)
     sim
 end
 
 
 
-fullreset!(sim::MJSim) = (mj_resetData(sim.m, sim.d); forward!(sim))
+@inline fullreset!(sim::MJSim) = (mj_resetData(sim.m, sim.d); forward!(sim))
 
-reset!(sim::MJSim) = reset!(sim, sim.initstate)
-reset!(sim::MJSim, state::RealVec) = (zerofullctrl!(sim); setstate!(sim, state); forward!(sim))
-function reset!(sim::MJSim, state::RealVec, action::RealVec)
-    zerofullctrl!(sim)
-    setstate!(sim, state)
-    setaction!(sim, action)
-    forward!(sim)
+@inline reset!(sim::MJSim) = forward!(reset_nofwd!(sim))
+@inline function reset_nofwd!(sim::MJSim)
+    setstate_nofwd!(zerofullctrl_nofwd!(sim), sim.initstate)
 end
 
 
@@ -219,31 +205,33 @@ Step the simulation by `skip` steps, where `skip` defaults to `MJSim.skip`.
 State-dependent controls (e.g. MJSim.d.{ctrl, xfrc_applied, qfrc_applied})
 should be set before calling `step!`.
 """
-function step!(sim::MJSim)
+function step!(sim::MJSim, skip::Integer=sim.skip)
+    check_skip(skip)
     # According to MuJoCo docs order must be:
     # 1. mj_step1
     # 2. set_{ctrl, xfrc_applied, qfrc_applied}
     # 3. mj_step2
     # This implies user should call setaction! then step!
-    for _=1:sim.skip
+    for _=1:skip
         mj_step2(sim.m, sim.d)
         mj_step1(sim.m, sim.d)
     end
     sim
 end
 
-step!(sim::MJSim, a) = (setaction!(sim, a); step!(sim))
 
 
+@inline zeroctrl!(sim::MJSim) = forwardskip!(zeroctrl_nofwd!(sim), MJCore.mjSTAGE_VEL)
+@inline zeroctrl_nofwd!(sim::MJSim) = (fill!(sim.d.ctrl, zero(mjtNum)); sim)
 
-@inline zeroctrl!(sim::MJSim) = (fill!(sim.d.ctrl, zero(mjtNum)); sim)
-
-function zerofullctrl!(sim::MJSim)
+@inline zerofullctrl!(sim::MJSim) = forwardskip!(zerofullctrl_nofwd!(sim), MJCore.mjSTAGE_VEL)
+@inline function zerofullctrl_nofwd!(sim::MJSim)
     fill!(sim.d.ctrl, zero(mjtNum))
     fill!(sim.d.qfrc_applied, zero(mjtNum))
     fill!(sim.d.xfrc_applied, zero(mjtNum))
     sim
 end
+
 
 function masscenter(sim::MJSim)
     mcntr = zeros(SVector{3, Float64})
@@ -268,9 +256,7 @@ end
 end
 
 
-@inline timestep(sim::MJSim) = sim.m.opt.timestep
-
-@inline effective_timestep(sim::MJSim) = timestep(sim) * sim.skip
+@inline timestep(sim::MJSim) = sim.m.opt.timestep * sim.skip
 
 @inline Base.time(sim::MJSim) = sim.d.time
 

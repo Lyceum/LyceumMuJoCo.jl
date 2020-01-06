@@ -1,7 +1,7 @@
 struct SwimmerV2{SIM <: MJSim, S <: AbstractShape, O <: AbstractShape} <: AbstractMuJoCoEnv
     sim::SIM
     statespace::S
-    observationspace::O
+    obsspace::O
     last_xy_position::MVector{2, Float64}
     randreset_distribution::Uniform{Float64}
 
@@ -37,10 +37,10 @@ function getstate!(s, env::SwimmerV2)
 end
 
 
-observationspace(env::SwimmerV2) = env.observationspace
+obsspace(env::SwimmerV2) = env.obsspace
 function getobs!(o, env::SwimmerV2)
     @uviews o begin
-        shaped = env.observationspace(o)
+        shaped = env.obsspace(o)
         copyto!(shaped.qpos, env.sim.d.qpos)
         copyto!(shaped.qvel, env.sim.d.qvel)
     end
@@ -49,7 +49,7 @@ end
 
 
 function getreward(env::SwimmerV2)
-    reward_fwd = (xy_position(env)[1] - env.last_xy_position[1]) / effective_timestep(env)
+    reward_fwd = (xy_position(env)[1] - env.last_xy_position[1]) / timestep(env)
     reward_ctrl = -1e-4 * sum(x->x^2, env.sim.d.ctrl)
     reward_fwd + reward_ctrl
 end

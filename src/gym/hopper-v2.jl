@@ -1,7 +1,7 @@
 mutable struct HopperV2{SIM, S, O} <: AbstractMuJoCoEnv
     sim::SIM
     statespace::S
-    observationspace::O
+    obsspace::O
     lastx::Float64
     randreset_distribution::Uniform{Float64}
     function HopperV2(sim::MJSim)
@@ -13,11 +13,11 @@ mutable struct HopperV2{SIM, S, O} <: AbstractMuJoCoEnv
     end
 end
 
-HopperV2() = first(thread_constructor(HopperV2, 1))
+HopperV2() = first(tconstruct(HopperV2, 1))
 
-function thread_constructor(::Type{<:HopperV2}, N::Integer)
+function tconstruct(::Type{<:HopperV2}, N::Integer)
     modelpath = joinpath(@__DIR__, "hopper-v2.xml")
-    Tuple(HopperV2(s) for s in thread_constructor(MJSim, N, modelpath, skip=4))
+    Tuple(HopperV2(s) for s in tconstruct(MJSim, N, modelpath, skip=4))
 end
 
 
@@ -35,7 +35,7 @@ function getstate!(s, env::HopperV2)
 end
 
 
-observationspace(env::HopperV2) = env.observationspace
+obsspace(env::HopperV2) = env.obsspace
 function getobs!(o, env::HopperV2)
     nq = env.sim.m.nq
     qpos = env.sim.d.qpos
@@ -54,7 +54,7 @@ function getreward(env::HopperV2)
     x, height, ang = uview(qpos, 1:3)
 
     alive_bonus = 1.0
-    reward = (x - env.lastx) / effective_timestep(env)
+    reward = (x - env.lastx) / timestep(env)
     reward += alive_bonus
     reward -= 1e-3 * sum(x->x^2, env.sim.d.ctrl)
     reward

@@ -1,7 +1,7 @@
 struct HumanoidV2{SIM, S, O} <: AbstractMuJoCoEnv
     sim::SIM
     statespace::S
-    observationspace::O
+    obsspace::O
     last_masscenter::MVector{3, Float64}
     randreset_distribution::Uniform{Float64}
 end
@@ -41,11 +41,11 @@ function LyceumBase.getstate!(s, env::HumanoidV2)
 end
 
 
-LyceumMuJoCo.observationspace(env::HumanoidV2) = env.observationspace
+LyceumMuJoCo.obsspace(env::HumanoidV2) = env.obsspace
 function LyceumMuJoCo.getobs!(o, env::HumanoidV2)
     d = env.sim.d
     qpos = d.qpos
-    osp = observationspace(env)
+    osp = obsspace(env)
     @views @uviews o qpos begin
         shaped = osp(o)
         copyto!(shaped.torsoqpos, qpos[3:end])
@@ -63,7 +63,7 @@ function LyceumBase.getreward(env::HumanoidV2)
     cur_masscenter = masscenter(env.sim)
     d = env.sim.d
     alive_bonus = 5.0
-    lin_vel_cost = 1.25 * (cur_masscenter[1] - env.last_masscenter[1]) / effective_timestep(env.sim)
+    lin_vel_cost = 1.25 * (cur_masscenter[1] - env.last_masscenter[1]) / timestep(env.sim)
     quad_ctrl_cost = 0.1 * sum(x->x^2, d.ctrl)
     quad_impact_cost = .5e-6 * sum(d.cfrc_ext)
     quad_impact_cost = min(quad_impact_cost, 10)
@@ -73,7 +73,7 @@ end
 
 function LyceumBase.geteval(env::HumanoidV2)
     cur_masscenter = masscenter(env.sim)
-    (cur_masscenter[1] - env.last_masscenter[1]) / effective_timestep(env.sim)
+    (cur_masscenter[1] - env.last_masscenter[1]) / timestep(env.sim)
 end
 
 
