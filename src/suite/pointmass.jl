@@ -19,9 +19,7 @@ end
 PointMass() = first(tconstruct(PointMass, 1))
 
 
-
 @inline getsim(env::PointMass) = env.sim
-
 
 
 @inline obsspace(env::PointMass) = env.obsspace
@@ -39,7 +37,6 @@ PointMass() = first(tconstruct(PointMass, 1))
 end
 
 
-
 @propagate_inbounds function getreward(::Any, ::Any, obs, env::PointMass)
     @boundscheck checkaxes(obsspace(env), obs)
     shaped = obsspace(env)(obs)
@@ -49,7 +46,6 @@ end
 end
 
 
-
 @propagate_inbounds function geteval(::Any, ::Any, obs, env::PointMass)
     @boundscheck checkaxes(obsspace(env), obs)
     shaped = env.obsspace(obs)
@@ -57,7 +53,6 @@ end
         euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
     end
 end
-
 
 
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PointMass)

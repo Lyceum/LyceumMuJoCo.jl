@@ -49,7 +49,6 @@ export # AbstractMuJoCoEnv interface (an addition to AbstractEnvironment's inter
        getsensor,
        zeroctrl!,
        zerofullctrl!,
-       fullreset!,
        forward!
 
 
@@ -122,9 +121,5 @@ end
 ####
 
 include("suite/pointmass.jl")
-
-#include("gym/humanoid-v2.jl")
-#include("gym/swimmer-v2.jl")
-#include("gym/hopper-v2.jl")
 
 end # module
