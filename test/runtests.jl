@@ -6,13 +6,6 @@ const LYCEUM_SUITE = [
     (LyceumMuJoCo.PointMass, (), ())
 ]
 
-const GYM_SUITE = [
-    #(LyceumMuJoCo.HumanoidV2, (), ()),
-    #(LyceumMuJoCo.SwimmerV2, (), ()),
-    #(LyceumMuJoCo.HopperV2, (), ()),
-]
-
-
 function test_group(group)
     @testset "Testing $etype\n    Args: $args.\n    Kwargs: $kwargs" for (etype, args, kwargs) in group
         LyceumBase.test_env(etype, args...; kwargs...)
@@ -25,7 +18,6 @@ end
 
     @testset "Environments" begin
         @testset "Lyceum Suite" begin test_group(LYCEUM_SUITE) end
-        #@testset "Gym Suite" begin test_group(GYM_SUITE) end
     end
 
 end
