@@ -226,7 +226,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LyceumBase]]
 deps = ["Adapt", "BenchmarkTools", "Dates", "ElasticArrays", "EllipsisNotation", "Future", "InteractiveUtils", "JLSO", "LibGit2", "LinearAlgebra", "Logging", "MacroTools", "Parameters", "Pkg", "Random", "Shapes", "StaticArrays", "Statistics", "Test", "UnicodePlots", "UniversalLogger", "UnsafeArrays"]
-path = "/home/colinxs/workspace/juliadev/LyceumBase"
+git-tree-sha1 = "bb9244d9247c5f6731960a91f924f140fb39b069"
+repo-rev = "master"
+repo-url = "https://github.com/Lyceum/LyceumBase.jl.git"
 uuid = "db31fed1-ca1e-4084-8a49-12fae1996a55"
 version = "0.1.0"
 
@@ -374,7 +376,9 @@ version = "0.5.4"
 
 [[Shapes]]
 deps = ["Adapt", "MacroTools", "Random", "Requires", "StaticArrays", "UnsafeArrays"]
-path = "/home/colinxs/workspace/juliadev/Shapes"
+git-tree-sha1 = "7e0bc5e9b9f65ea5ec1ca964e2fa183135737deb"
+repo-rev = "master"
+repo-url = "https://github.com/Lyceum/Shapes.jl.git"
 uuid = "175de200-b73b-11e9-28b7-9b5b306cec37"
 version = "0.1.0"
 
