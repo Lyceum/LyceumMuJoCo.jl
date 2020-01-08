@@ -1,4 +1,4 @@
-struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnv
+struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnvironment
     sim::S
     obsspace::O
     function PointMass(sim::MJSim)
