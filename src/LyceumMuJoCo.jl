@@ -1,19 +1,20 @@
 module LyceumMuJoCo
 
-using UnsafeArrays, Shapes, StaticArrays, Distributions, Reexport, Random
+using UnsafeArrays, Shapes, StaticArrays, Distributions, Reexport, Random, LinearAlgebra, Distances
 
 using Base: @propagate_inbounds
 using MuJoCo
-using .MJCore: mjtNum
+using MuJoCo.MJCore: mjtNum
 
 @reexport using LyceumBase
 using LyceumBase: RealVec, @mustimplement
 
 import LyceumBase: statespace,
                    getstate!,
+                   setstate!,
                    getstate,
 
-                   observationspace,
+                   obsspace,
                    getobs!,
                    getobs,
 
@@ -25,32 +26,29 @@ import LyceumBase: statespace,
                    rewardspace,
                    getreward,
 
-                   evaluationspace,
+                   evalspace,
                    geteval,
 
                    reset!,
                    randreset!,
                    step!,
                    isdone,
-                   sharedmemory_envs,
                    timestep,
-                   effective_timestep
 
-export # AbstractMuJoCoEnv interface (an addition to AbstractEnv's interface)
-       AbstractMuJoCoEnv,
+                   tconstruct
+
+export # AbstractMuJoCoEnvironment interface (an addition to AbstractEnvironment's interface)
+       AbstractMuJoCoEnvironment,
        getsim,
 
        # MJSim interface
        MJSim,
-       MJSimParameters,
-       sharedmemory_mjsims,
        setstate!,
        sensorspace,
        getsensor!,
        getsensor,
        zeroctrl!,
        zerofullctrl!,
-       fullreset!,
        forward!
 
 
@@ -59,49 +57,69 @@ include("mjsim.jl")
 
 
 ####
-#### AbstractMuJoCoEnv and suite
+#### AbstractMuJoCoEnvironment Interface
 ####
 
-abstract type AbstractMuJoCoEnv <: AbstractEnv end
-@mustimplement getsim(env::AbstractMuJoCoEnv) # TODO document "opt in" behavior
-@mustimplement MJSimParameters(::Type{<:AbstractMuJoCoEnv})
+abstract type AbstractMuJoCoEnvironment <: AbstractEnvironment end
 
-function sharedmemory_envs(
-    ::Type{E},
-    n::Integer,
-    args...;
-    kwargs...,
-) where {E<:AbstractMuJoCoEnv}
-    n > 0 || throw(ArgumentError("n must be > 0"))
-    defaults = MJSimParameters(E)
-    Tuple(E(s, args...; kwargs...) for s in sharedmemory_mjsims(defaults.modelpath, n, defaults.args...; defaults.kwargs...))
+
+
+
+@propagate_inbounds statespace(env::AbstractMuJoCoEnvironment) = statespace(getsim(env))
+
+@propagate_inbounds function getstate!(state, env::AbstractMuJoCoEnvironment)
+    getstate!(state, getsim(env))
+    state
 end
 
-statespace(env::AbstractMuJoCoEnv) = statespace(getsim(env))
-getstate!(s, env::AbstractMuJoCoEnv) = getstate!(s, getsim(env))
+@propagate_inbounds function setstate!(env::AbstractMuJoCoEnvironment, state)
+    setstate!(getsim(env), state)
+    env
+end
 
-observationspace(env::AbstractMuJoCoEnv) = sensorspace(getsim(env))
-getobs!(o, env::AbstractMuJoCoEnv) = getsensor!(o, getsim(env))
 
-actionspace(env::AbstractMuJoCoEnv) = actionspace(getsim(env))
-getaction!(a, env::AbstractMuJoCoEnv) = getaction!(a, getsim(env))
-setaction!(env::AbstractMuJoCoEnv, a) = (setaction!(getsim(env), a); env)
 
-reset!(env::AbstractMuJoCoEnv) = (reset!(getsim(env)); env)
-reset!(env::AbstractMuJoCoEnv, s) = (reset!(getsim(env), s); env)
-reset!(env::AbstractMuJoCoEnv, s, c) = (reset!(getsim(env), s, c); env)
 
-step!(env::AbstractMuJoCoEnv) = (step!(getsim(env)); env)
+@propagate_inbounds obsspace(env::AbstractMuJoCoEnvironment) = sensorspace(getsim(env))
 
-timestep(env::AbstractMuJoCoEnv) = timestep(getsim(env))
-effective_timestep(env::AbstractMuJoCoEnv) = effective_timestep(getsim(env))
-Base.time(env::AbstractMuJoCoEnv) = time(getsim(env))
+@propagate_inbounds getobs!(obs, env::AbstractMuJoCoEnvironment) = getsensor!(obs, getsim(env))
 
+
+
+
+@propagate_inbounds actionspace(env::AbstractMuJoCoEnvironment) = actionspace(getsim(env))
+
+@propagate_inbounds getaction!(a, env::AbstractMuJoCoEnvironment) = getaction!(a, getsim(env))
+
+@propagate_inbounds function setaction!(env::AbstractMuJoCoEnvironment, a)
+    setaction!(getsim(env), a)
+    env
+end
+
+
+
+
+@propagate_inbounds reset!(env::AbstractMuJoCoEnvironment) = (reset!(getsim(env)); env)
+
+
+
+@propagate_inbounds step!(env::AbstractMuJoCoEnvironment) = (step!(getsim(env)); env)
+
+
+
+@propagate_inbounds Base.time(env::AbstractMuJoCoEnvironment) = time(getsim(env))
+
+@propagate_inbounds timestep(env::AbstractMuJoCoEnvironment) = timestep(getsim(env))
+
+
+
+@mustimplement getsim(env::AbstractMuJoCoEnvironment)
+
+
+####
+#### Environments
+####
 
 include("suite/pointmass.jl")
-
-include("gym/humanoid-v2.jl")
-include("gym/swimmer-v2.jl")
-include("gym/hopper-v2.jl")
 
 end # module

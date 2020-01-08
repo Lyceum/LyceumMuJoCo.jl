@@ -1,79 +1,68 @@
-struct PointMass{S, O} <: AbstractMuJoCoEnv
+struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnvironment
     sim::S
-    osp::O
+    obsspace::O
+    function PointMass(sim::MJSim)
+        obsspace = MultiShape(
+            agent_xy_pos = VectorShape(mjtNum, 2),
+            agent_xy_vel = VectorShape(mjtNum, 2),
+            target_xy_pos = VectorShape(mjtNum, 2)
+        )
+        new{typeof(sim), typeof(obsspace)}(sim, obsspace)
+    end
 end
 
-function PointMass(s::MJSim)
-    osp = MultiShape(
-        agent_xy_pos = VectorShape(mjtNum, 2),
-        agent_xy_vel = VectorShape(mjtNum, 2),
-        target_xy_pos = VectorShape(mjtNum, 2)
-    )
-    PointMass(s, osp)
+function tconstruct(::Type{PointMass}, N::Integer)
+    modelpath = joinpath(@__DIR__, "pointmass.xml")
+    Tuple(PointMass(s) for s in tconstruct(MJSim, N, modelpath, skip=1))
 end
 
-PointMass() = first(sharedmemory_envs(PointMass, 1))
-
-function LyceumBase.sharedmemory_envs(::Type{PointMass}, n::Integer)
-    model = joinpath(@__DIR__, "pointmass.xml")
-    Tuple(PointMass(s) for s in sharedmemory_mjsims(model, n, skip=3))
-end
+PointMass() = first(tconstruct(PointMass, 1))
 
 
-LyceumBase.statespace(env::PointMass) = statespace(env.sim)
-LyceumBase.getstate!(s, env::PointMass) = getstate!(s, env.sim)
+@inline getsim(env::PointMass) = env.sim
 
-getsim(env::PointMass) = env.sim
 
-LyceumBase.observationspace(env::PointMass) = env.osp
-function LyceumBase.getobs!(o, env::PointMass)
+@inline obsspace(env::PointMass) = env.obsspace
+
+@propagate_inbounds function getobs!(obs, env::PointMass)
+    @boundscheck checkaxes(obsspace(env), obs)
     dn = env.sim.dn
-    o .= (
-        dn.xpos[:x, :agent], dn.xpos[:y, :agent],
-        dn.qvel[:agent_x], dn.qvel[:agent_y],
-        dn.xpos[:x, :target], dn.xpos[:y, :target],
-    )
-    o
+    shaped = obsspace(env)(obs)
+    @uviews shaped @inbounds begin
+        shaped.agent_xy_pos .= dn.xpos[:x, :agent], dn.xpos[:y, :agent]
+        shaped.agent_xy_vel .= dn.qvel[:agent_x], dn.qvel[:agent_y]
+        shaped.target_xy_pos .= dn.xpos[:x, :target], dn.xpos[:y, :target]
+    end
+    obs
 end
 
 
-LyceumBase.actionspace(env::PointMass) = actionspace(env.sim)
-LyceumBase.getaction!(a, env::PointMass) = getaction!(a, env.sim)
-LyceumBase.setaction!(env::PointMass, a) = (setaction!(env.sim, a); env)
+@propagate_inbounds function getreward(::Any, ::Any, obs, env::PointMass)
+    @boundscheck checkaxes(obsspace(env), obs)
+    shaped = obsspace(env)(obs)
+    @uviews shaped @inbounds begin
+        1.0 - euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
+    end
+end
 
 
-LyceumBase.rewardspace(env::PointMass) = ScalarShape(Float64)
-LyceumBase.getreward(env::PointMass) = 1.0 - dist2target(env)
+@propagate_inbounds function geteval(::Any, ::Any, obs, env::PointMass)
+    @boundscheck checkaxes(obsspace(env), obs)
+    shaped = env.obsspace(obs)
+    @uviews shaped @inbounds begin
+        euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
+    end
+end
 
 
-LyceumBase.evaluationspace(env::PointMass) = ScalarShape(Float64)
-LyceumBase.geteval(env::PointMass) = dist2target(env)
-
-LyceumBase.reset!(env::PointMass) = (reset!(env.sim); env)
-LyceumBase.reset!(env::PointMass, s) = (reset!(env.sim, s); env)
-function LyceumBase.randreset!(env::PointMass)
-    s = env.sim
-    reset!(s)
-    s.dn.qpos[:agent_x] = rand() * 2.0 - 1.0
-    s.dn.qpos[:agent_y] = rand() * 2.0 - 1.0
-    s.dn.qpos[:target_x] = rand() * 2.0 - 1.0
-    s.dn.qpos[:target_y] = rand() * 2.0 - 1.0
-    forward!(s)
+@propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PointMass)
+    reset_nofwd!(env.sim)
+    @inbounds begin
+        env.sim.dn.qpos[:agent_x] = rand(rng) * 2.0 - 1.0
+        env.sim.dn.qpos[:agent_y] = rand(rng) * 2.0 - 1.0
+        env.sim.dn.qpos[:target_x] = rand(rng) * 2.0 - 1.0
+        env.sim.dn.qpos[:target_y] = rand(rng) * 2.0 - 1.0
+    end
+    forward!(env.sim)
     env
 end
-
-
-LyceumBase.step!(env::PointMass) = (step!(env.sim); env)
-
-
-Base.time(env::PointMass) = time(env.sim)
-
-
-function dist2target(env::PointMass)
-    dn = env.sim.dn
-    dist = (dn.xpos[:x, :agent] - dn.xpos[:x, :target]) ^ 2
-    dist += (dn.xpos[:y, :agent] - dn.xpos[:y, :target]) ^ 2
-    sqrt(dist)
-end
-
-
