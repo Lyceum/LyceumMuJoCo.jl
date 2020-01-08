@@ -19,9 +19,9 @@ mutable struct WalkerV2{SIM, S, O} <: AbstractMuJoCoEnvironment
     end
 end
 
-WalkerV2() = first(sharedmemory_envs(WalkerV2, 1))
+WalkerV2() = first(tconstruct(WalkerV2, 1))
 
-function LyceumBase.sharedmemory_envs(::Type{WalkerV2}, n::Integer)
+function LyceumBase.tconstruct(::Type{WalkerV2}, n::Integer)
     model = joinpath(@__DIR__, "walker-v2.xml")
     Tuple(WalkerV2(s) for s in sharedmemory_mjsims(model, n, skip=4))
 end

@@ -19,9 +19,9 @@ mutable struct HopperV2{SIM, S, O} <: AbstractMuJoCoEnvironment
     end
 end
 
-HopperV2() = first(sharedmemory_envs(HopperV2, 1))
+HopperV2() = first(tconstruct(HopperV2, 1))
 
-function LyceumBase.sharedmemory_envs(::Type{HopperV2}, n::Integer)
+function LyceumBase.tconstruct(::Type{HopperV2}, n::Integer)
     model = joinpath(@__DIR__, "hopper-v2.xml")
     Tuple(HopperV2(s) for s in sharedmemory_mjsims(model, n, skip=4))
 end

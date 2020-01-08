@@ -21,11 +21,11 @@ mutable struct SwimmerV2{SIM <: MJSim, S <: AbstractShape, O <: AbstractShape} <
     end
 end
 
-SwimmerV2() = first(sharedmemory_envs(SwimmerV2))
+SwimmerV2() = first(tconstruct(SwimmerV2, 1))
 
-function LyceumBase.sharedmemory_envs(::Type{<:SwimmerV2}, n::Integer = 1)
-    model = joinpath(@__DIR__, "swimmer-v2.xml")
-    Tuple(SwimmerV2(s) for s in sharedmemory_mjsims(model, n, skip=5))
+function tconstruct(::Type{SwimmerV2}, n::Integer)
+    modelpath = joinpath(@__DIR__, "swimmer-v2.xml")
+    Tuple(SwimmerV2(s) for s in tconstruct(MJSim, n, modelpath, skip=5))
 end
 
 getsim(env::SwimmerV2) = env.sim
