@@ -11,7 +11,7 @@ const DEFAULT_CAN_SHARE_MODEL = true
 """
     MJSim
 
-A type that couples a jlModel and jlData from MuJoCo.jl to provide a full simulation
+The `MJSim` type couples a `jlModel` and `jlData` from MuJoCo.jl to provide a full simulation.
 
 The following are the official/internal/minimum set of fields from `jlData` for
 state, observation, and action in MuJoCo:
@@ -20,22 +20,28 @@ state, observation, and action in MuJoCo:
 - Observation: `sensordata`
 - Action: `(ctrl, qfrc_applied, xfrc_applied)`
 
-MJSim deviates slightly from the convention in the following ways:
-
-1. `qacc_warmstart` is dropped from the official state vector as it can change with
-   subsequent calls to setstate!(sim::MJSim) (which internaly calls `mj_forward`),
-   violating the following requirement:
-   setstate!(sim, state)getstate(sim)
-
 MJSim follows this convention.
-For more information, see the "State and control" section of http://www.mujoco.org/book/programming.html
+
+For more information, see the "State and control" section of www.mujoco.org/book/programming.html
+
+# Constructors
+    MJSim(m::jlModel, d::jlData; skip::Integer = 1)
+    MJSim(modelpath::String; skip::Integer = 1)
+
+Construct a `MJSim` from either `m` and `d` or the MJCF/MJB model file located
+at `modelpath`, with skip `skip`.
+
+See MuJoCo.jl and the MuJoCo documentation (www.mujoco.org) for further
+documentation of `jlData`, `jlModel`, as well as the MJCF and MJB file formats.
 
 # Fields
-    `m::jlModel`: ccontains the model description and is expected to remain constant.
-    `d::jlData`: contains all dynamic variables and intermediate results.
-    `mn::Tuple`: named-access version of MJSim.m provided by AxisArrays.jl.
-    `dn::Tuple`: named-access version of MJSim.d provided by AxisArrays.jl.
-    `initstate::Vector{mjtNum}`: The initial state vector at the time when this MJSim was constructed.
+- `m::jlModel`: contains the model description and is expected to remain constant.
+- `d::jlData`: contains all dynamic variables and intermediate results.
+- `mn::Tuple`: named-access version of `MJSim.m` provided by AxisArrays.jl.
+- `dn::Tuple`: named-access version of `MJSim.d` provided by AxisArrays.jl.
+- `skip::Int`: the number of times the simulation is integrated, yielding an
+  effective simulation timestep of `skip * m.opt.timestep`.
+- `initstate::Vector{mjtNum}`: The initial state vector at the time when this MJSim was constructed.
 """
 struct MJSim{MN, DN, S, SE, A}
     m::jlModel
@@ -49,78 +55,61 @@ struct MJSim{MN, DN, S, SE, A}
     statespace::S
     sensorspace::SE
     actionspace::A
+
+    function MJSim(m::jlModel, d::jlData; skip::Integer = DEFAULT_SKIP)
+        check_skip(skip)
+
+        m_named, d_named = namify(m, d)
+
+        nameshapes = map(MJSTATE_FIELDS) do name
+            field = getproperty(d, name)
+            name => Shape(eltype(field), size(field)...)
+        end
+        statespace = MultiShape(nameshapes...)
+
+        if m.nsensor > 0
+            nameshapes = map(1:m.nsensor) do id
+              name = jl_id2name(m, MJCore.mjOBJ_SENSOR, id)
+              name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
+              dof = m.sensor_dim[id]
+              dof == 1 ? ScalarShape(mjtNum) : VectorShape(mjtNum, dof)
+            end
+            sensorspace = MultiShape(nameshapes...)
+        else
+            sensorspace = VectorShape(mjtNum, 0)
+        end
+
+        if m.nu > 0
+            clampctrl = !jl_disabled(m, MJCore.mjDSBL_CLAMPCTRL)
+            nameshapes = map(1:m.nu) do id
+                name = jl_id2name(m, MJCore.mjOBJ_ACTUATOR, id)
+                name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
+                name => ScalarShape(mjtNum) #TODO boundedshape
+            end
+            actionspace = MultiShape(nameshapes...)
+        else
+            actionspace = VectorShape(mjtNum, 0)
+        end
+
+        initstate = mapreduce(vcat, MJSTATE_FIELDS) do name
+            field = getproperty(d, name)
+            ndims(field) > 1 ? vec(field) : field
+        end
+
+    	sim = new{typeof(m_named), typeof(d_named), typeof(statespace), typeof(sensorspace), typeof(actionspace)}(m, d, m_named, d_named,
+            initstate, skip,
+            statespace, sensorspace, actionspace)
+
+        forward!(sim)
+    end
 end
 
-"""
-    MJSim(m::jlModel, d::jlData; skip::Integer=1)
-
-Construct an MJSim struct with a user specified jlModel and jlData. See MuJoCo.jl for more info on
-these structures.
-
-'skip' is defined as the number of times the simulation is integrated. The ctrl field in jlData is
-held as the same value for each integration steps. The effective timestep of the simulation thus becomes
-
-skip * m.opt.timestep
-"""
-function MJSim(m::jlModel, d::jlData; skip::Integer = DEFAULT_SKIP)
-    check_skip(skip)
-
-    m_named, d_named = namify(m, d)
-
-    nameshapes = map(MJSTATE_FIELDS) do name
-        field = getproperty(d, name)
-        name => Shape(eltype(field), size(field)...)
-    end
-    statespace = MultiShape(nameshapes...)
-
-    if m.nsensor > 0
-        nameshapes = map(1:m.nsensor) do id
-          name = jl_id2name(m, MJCore.mjOBJ_SENSOR, id)
-          name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
-          dof = m.sensor_dim[id]
-          dof == 1 ? ScalarShape(mjtNum) : VectorShape(mjtNum, dof)
-        end
-        sensorspace = MultiShape(nameshapes...)
-    else
-        sensorspace = VectorShape(mjtNum, 0)
-    end
-
-    if m.nu > 0
-        clampctrl = !jl_disabled(m, MJCore.mjDSBL_CLAMPCTRL)
-        nameshapes = map(1:m.nu) do id
-            name = jl_id2name(m, MJCore.mjOBJ_ACTUATOR, id)
-            name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
-            name => ScalarShape(mjtNum) #TODO boundedshape
-        end
-        actionspace = MultiShape(nameshapes...)
-    else
-        actionspace = VectorShape(mjtNum, 0)
-    end
-
-    initstate = mapreduce(vcat, MJSTATE_FIELDS) do name
-        field = getproperty(d, name)
-        ndims(field) > 1 ? vec(field) : field
-    end
-
-	sim = MJSim(m, d, m_named, d_named,
-        initstate, skip,
-		statespace, sensorspace, actionspace)
-
-    forward!(sim)
-end
-
-"""
-    MJSim(modelpath::String, args...; kwargs...)
-
-This function automatically constructs a jlModel, jlData for a given MuJoCo XML model file path.
-
-args, kwargs allows for customized sim constructors to be created. For instance, a function may be defined for an environment that allows for dynamic model parameter randomization at load time; the fields and values can be passed in thusly.
-"""
 function MJSim(modelpath::String; skip::Integer = DEFAULT_SKIP)
     m = jlModel(modelpath)
     d = jlData(m)
     MJSim(m, d, skip=skip)
 end
+
 
 function LyceumBase.tconstruct(::Type{MJSim}, N::Integer, m::jlModel; skip::Integer = DEFAULT_SKIP, can_share_model::Bool=DEFAULT_CAN_SHARE_MODEL)
     N > 0 || throw(ArgumentError("N must be > 0"))
@@ -232,7 +221,7 @@ end
 @inline reset!(sim::MJSim) = forward!(reset_nofwd!(sim))
 @inline reset_nofwd!(sim::MJSim) = (mj_resetData(sim.m, sim.d); sim)
 
-# typically 2-3x faster that reset!
+# typically 2-3x faster than reset!
 @inline fastreset!(sim::MJSim) = forward!(fastreset_nofwd!(sim))
 @inline function fastreset_nofwd!(sim::MJSim)
     zerofullctrl_nofwd!(sim)
@@ -245,8 +234,8 @@ end
 
 Step the simulation by `skip` steps, where `skip` defaults to `MJSim.skip`.
 
-State-dependent controls (e.g. MJSim.d.{ctrl, xfrc_applied, qfrc_applied})
-should be set before calling `step!`.
+State-dependent controls (e.g. the `ctrl`, `xfrc_applied`, `qfrc_applied`
+fields of `sim.d`) should be set before calling `step!`.
 """
 function step!(sim::MJSim, skip::Integer=sim.skip)
     check_skip(skip)
@@ -264,16 +253,19 @@ end
 
 
 """
-    zeroctrl!(sim::MJSim) = (fill!(sim.d.ctrl, zero(mjtNum)); sim)
+    zeroctrl!(sim::MJSim)
 
-Zero out the mjData fields thats contribute to forward dynamics calculations, namely:
-   d.ctrl
-   d.qfrc_applied
-   d.xfrc_applied
+Zero out `sim.d.ctrl` and compute new forward dynamics.
 """
 @inline zeroctrl!(sim::MJSim) = forwardskip!(zeroctrl_nofwd!(sim), MJCore.mjSTAGE_VEL)
 @inline zeroctrl_nofwd!(sim::MJSim) = (fill!(sim.d.ctrl, zero(mjtNum)); sim)
 
+"""
+    zerofullctrl!(sim::MJSim)
+
+Zero out all of the fields in `sim.d` that contribute to forward dynamics calculations,
+namely `ctrl`, `qfrc_applied`, and `xfrc_applied`, and compute the forward dynamics.
+"""
 @inline zerofullctrl!(sim::MJSim) = forwardskip!(zerofullctrl_nofwd!(sim), MJCore.mjSTAGE_VEL)
 @inline function zerofullctrl_nofwd!(sim::MJSim)
     fill!(sim.d.ctrl, zero(mjtNum))
@@ -285,7 +277,8 @@ end
 """
     masscenter(sim::MJSim)
 
-Calculate the center of mass by summing up the Cartesian coordinates of each body.
+Calculate the center of mass of the entire simulation by computing the mass-weighted
+sum of the Cartesian coordinates of each body in the world frame.
 """
 function masscenter(sim::MJSim)
     mcntr = zeros(SVector{3, Float64})
@@ -302,25 +295,19 @@ function masscenter(sim::MJSim)
 end
 
 """
-    forward!(sim::MJSim) = (mj_forward(sim.m, sim.d); sim)
+    forward!(sim::MJSim)
+
+Compute the forward dynamics of the simulation and store them in `sim.d`.
+Equivalent to `mj_forward(sim.m, sim.d)`
 """
 @inline forward!(sim::MJSim) = (mj_forward(sim.m, sim.d); sim)
 
 """
     forwardskip!(sim::MJSim, skipstage::MJCore.mjtStage=MJCore.mjSTAGE_NONE, skipsensor::Bool=false)
 
-Wraps mj_forwardSkip, to allow for optimization of forward dynamics calculations by skipping appropriate calculation steps.
-
-The enum selecting for which stages are skipped are:
-
-@cenum mjtStage::Cint begin     # computation stage
-    mjSTAGE_NONE = 0            # no computations
-    mjSTAGE_POS                 # position-dependent computations
-    mjSTAGE_VEL                 # velocity-dependent computations
-    mjSTAGE_ACC                 # acceleration/force-dependent computations
-end
-
-skipsensor == true will avoid the sensor computations.
+Compute the forward dynamics of the simulation and store them in `sim.d`, optionally
+skipping parts of the dynamics calculation. Equivalent to
+`mj_forwardSkip(sim.m, sim.d, skipstage, skipsensor)`.
 
 More information can be found at http://mujoco.org/book/programming.html under 'Forward Dynamics'
 """
@@ -330,12 +317,17 @@ More information can be found at http://mujoco.org/book/programming.html under '
 end
 
 """
-    timestep(sim::MJSim) = sim.m.opt.timestep
+    timestep(sim::MJSim)
+
+Return the effective timestep of `sim`. Equivalent to `sim.skip * sim.m.opt.timestep`.
 """
 @inline timestep(sim::MJSim) = sim.m.opt.timestep * sim.skip
 
 """
-    Base.time(sim::MJSim) = sim.d.time
+    Base.time(sim::MJSim)
+
+Return the current simulation time, in seconds, of `sim`.
+Equivalent to sim.d.time.
 """
 @inline Base.time(sim::MJSim) = sim.d.time
 
@@ -346,5 +338,3 @@ Base.show(io::IO, ::MIME"text/plain", sim::Union{MJSim, Type{<:MJSim}}) = show(i
 Base.show(io::IO, sim::Union{MJSim, Type{<:MJSim}}) = print(io, "MJSim")
 
 @inline check_skip(skip) = skip > 0 || throw(ArgumentError("`skip` must be > 0"))
-
-#TODO inverse and inverseskip
