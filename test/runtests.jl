@@ -7,7 +7,8 @@ const LYCEUM_SUITE = [
 ]
 
 const GYM = [
-    (LyceumMuJoCo.SwimmerV2, (), ())
+    (LyceumMuJoCo.SwimmerV2, (), ()),
+    (LyceumMuJoCo.HopperV2, (), ())
 ]
 
 function test_group(group)

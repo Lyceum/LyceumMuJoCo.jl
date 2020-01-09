@@ -125,5 +125,6 @@ end
 include("suite/pointmass.jl")
 
 include("gym/swimmer-v2.jl")
+include("gym/hopper-v2.jl")
 
 end # module
