@@ -48,7 +48,7 @@ end
 
 @propagate_inbounds function geteval(::Any, ::Any, obs, env::PointMass)
     @boundscheck checkaxes(obsspace(env), obs)
-    shaped = env.obsspace(obs)
+    shaped = obsspace(env)(obs)
     @uviews shaped @inbounds begin
         euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
     end
