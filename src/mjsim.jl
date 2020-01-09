@@ -72,7 +72,8 @@ struct MJSim{MN, DN, S, SE, A}
               name = jl_id2name(m, MJCore.mjOBJ_SENSOR, id)
               name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
               dof = m.sensor_dim[id]
-              dof == 1 ? ScalarShape(mjtNum) : VectorShape(mjtNum, dof)
+              shape = dof == 1 ? ScalarShape(mjtNum) : VectorShape(mjtNum, dof)
+              name => shape
             end
             sensorspace = MultiShape(nameshapes...)
         else

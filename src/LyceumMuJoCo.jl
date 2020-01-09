@@ -37,6 +37,8 @@ import LyceumBase: statespace,
 
                    tconstruct
 
+using LyceumBase.Tools: perturb!
+
 export # AbstractMuJoCoEnvironment interface (an addition to AbstractEnvironment's interface)
        AbstractMuJoCoEnvironment,
        getsim,
@@ -121,5 +123,9 @@ end
 ####
 
 include("suite/pointmass.jl")
+
+include("gym/swimmer-v2.jl")
+include("gym/hopper-v2.jl")
+include("gym/walker2d-v2.jl")
 
 end # module
