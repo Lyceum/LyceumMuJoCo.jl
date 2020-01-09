@@ -37,6 +37,8 @@ import LyceumBase: statespace,
 
                    tconstruct
 
+using LyceumBase.Tools: perturb!
+
 export # AbstractMuJoCoEnvironment interface (an addition to AbstractEnvironment's interface)
        AbstractMuJoCoEnvironment,
        getsim,

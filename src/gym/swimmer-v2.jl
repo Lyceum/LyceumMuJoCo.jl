@@ -1,12 +1,12 @@
 mutable struct SwimmerV2{SIM <: MJSim, S <: AbstractShape, O <: AbstractShape} <: AbstractMuJoCoEnvironment
     sim::SIM
     statespace::S
-    observationspace::O
-    lastxp::Float64
+    obsspace::O
+    last_torso_x::Float64
     randreset_distribution::Uniform{Float64}
 
     function SwimmerV2(sim::SIM) where {SIM <: MJSim}
-        sspace = MultiShape(simstate=statespace(sim), lastxp=ScalarShape(Float64))
+        sspace = MultiShape(simstate=statespace(sim), last_torso_x=ScalarShape(Float64))
         ospace = MultiShape(
             qpos_cropped = VectorShape(Float64, sim.m.nq - 2),
             qvel=statespace(sim).qvel
@@ -24,74 +24,90 @@ end
 SwimmerV2() = first(tconstruct(SwimmerV2, 1))
 
 function tconstruct(::Type{SwimmerV2}, n::Integer)
-    modelpath = joinpath(@__DIR__, "swimmer-v2.xml")
-    Tuple(SwimmerV2(s) for s in tconstruct(MJSim, n, modelpath, skip=5))
+    modelpath = joinpath(@__DIR__, "swimmer.xml")
+    Tuple(SwimmerV2(s) for s in tconstruct(MJSim, n, modelpath, skip=4))
 end
 
 getsim(env::SwimmerV2) = env.sim
 
-statespace(env::SwimmerV2) = env.statespace
-function getstate!(s, env::SwimmerV2)
-    @uviews s begin
-        shaped = env.statespace(s)
+
+@inline statespace(env::SwimmerV2) = env.statespace
+
+function getstate!(state, env::SwimmerV2)
+    checkaxes(statespace(env), state)
+    @uviews state begin
+        shaped = statespace(env)(state)
         getstate!(shaped.simstate, env.sim)
-        shaped.lastxp = env.lastxp
+        shaped.last_torso_x = env.last_torso_x
     end
-    s
+    state
+end
+
+function setstate!(env::SwimmerV2, state)
+    checkaxes(statespace(env), state)
+    @uviews state begin
+        shaped = statespace(env)(state)
+        setstate!(env.sim, shaped.simstate)
+        env.last_torso_x = shaped.last_torso_x
+    end
+    env
 end
 
 
-observationspace(env::SwimmerV2) = env.observationspace
-function getobs!(o, env::SwimmerV2)
+@inline obsspace(env::SwimmerV2) = env.obsspace
+
+function getobs!(obs, env::SwimmerV2)
+    checkaxes(obsspace(env), obs)
     qpos = env.sim.d.qpos
-    @views @uviews o qpos begin
-        shaped = env.observationspace(o)
-        copyto!(shaped.qpos_cropped, env.sim.d.qpos[3:end])
+    @views @uviews obs qpos begin
+        shaped = obsspace(env)(obs)
+        copyto!(shaped.qpos_cropped, qpos[3:end])
         copyto!(shaped.qvel, env.sim.d.qvel)
     end
-    o
+    obs
 end
 
 
-function getreward(env::SwimmerV2)
-    reward_fwd = (xp(env) - env.lastxp) / effective_timestep(env)
-    reward_ctrl = -1e-4 * sum(x->x^2, env.sim.d.ctrl)
-    reward_fwd + reward_ctrl
+function getreward(state, action, ::Any, env::SwimmerV2)
+    checkaxes(statespace(env), state)
+    checkaxes(actionspace(env), action)
+    @uviews state begin
+        shaped = statespace(env)(state)
+        reward_fwd = (torso_x(shaped) - shaped.last_torso_x) / timestep(env)
+        reward_ctrl = -1e-4 * sum(x->x^2, action)
+        reward_fwd + reward_ctrl
+    end
 end
 
-geteval(env::SwimmerV2) = xp(env)
+function geteval(state, action, obs, env::SwimmerV2)
+    checkaxes(statespace(env), state)
+    @uviews state begin
+        torso_x(statespace(env)(state))
+    end
+end
 
 
 function reset!(env::SwimmerV2)
     reset!(env.sim)
-    env.lastxp = xp(env)
+    env.last_torso_x = torso_x(env)
     env
 end
 
-function reset!(env::SwimmerV2, s)
-    @uviews s begin
-        shaped = env.statespace(s)
-        reset!(env.sim, shaped.simstate)
-        env.lastxp = shaped.lastxp
-    end
-    forward!(env)
-    env
-end
-
-function randreset!(env::SwimmerV2)
-    reset!(env.sim)
-    @. env.sim.d.qpos = rand(env.randreset_distribution)
-    @. env.sim.d.qvel = rand(env.randreset_distribution)
+function randreset!(rng::AbstractRNG, env::SwimmerV2)
+    reset_nofwd!(env.sim)
+    perturb!(rng, env.randreset_distribution, env.sim.d.qpos)
+    perturb!(rng, env.randreset_distribution, env.sim.d.qvel)
     forward!(env.sim)
-    env.lastxp = xp(env)
+    env.last_torso_x = torso_x(env)
     env
 end
 
 function step!(env::SwimmerV2)
-    env.lastxp = xp(env)
+    env.last_torso_x = torso_x(env)
     step!(env.sim)
     env
 end
 
 # x-position of Swimmer's torso
-xp(env::SwimmerV2) = env.sim.d.qpos[1]
+torso_x(shapedstate::ShapedView) = shapedstate.simstate.qpos[1]
+torso_x(env::SwimmerV2) = env.sim.d.qpos[1]
