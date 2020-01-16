@@ -14,7 +14,6 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Shapes = "175de200-b73b-11e9-28b7-9b5b306cec37"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 UnsafeArrays = "c4a57d5a-5b31-53a6-b365-19f8c011fbd6"
 
 [compat]
@@ -27,7 +26,6 @@ Reexport = "0.2"
 Shapes = "0.1"
 StaticArrays = "0.12.1"
 UnsafeArrays = "1"
-TimeZones = "0.10.3"
 julia = "1.3"
 
 [extras]
