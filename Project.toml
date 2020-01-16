@@ -19,7 +19,7 @@ UnsafeArrays = "c4a57d5a-5b31-53a6-b365-19f8c011fbd6"
 [compat]
 AxisArrays = "0.4"
 Distances = "0.8.2"
-Distributions = "0.22"
+Distributions = "0.22.2"
 LyceumBase = "0.1"
 MuJoCo = "0.1.1"
 Reexport = "0.2"
