@@ -13,7 +13,7 @@ HumanoidGetup() = first(tconstruct(HumanoidGetup, 1))
 @inline getsim(env::HumanoidGetup) = env.sim
 
 @propagate_inbounds function reset!(env::HumanoidGetup)
-    reset_nofwd!(env.sim)
+    fastreset_nofwd!(env.sim)
     #@inbounds env.sim.d.qpos .= env.sim.mn.key_qpos[:,:laying]
     # noalloc:
     key_qpos = env.sim.m.key_qpos
@@ -23,7 +23,7 @@ HumanoidGetup() = first(tconstruct(HumanoidGetup, 1))
 end
 
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::HumanoidGetup)
-    reset_nofwd!(env.sim)
+    fastreset_nofwd!(env.sim)
     rand!(rng, Uniform(-0.4, 0.4), env.sim.d.ctrl)
     forward!(env.sim)
     # apply a random, fixed control vector 200 times
@@ -33,6 +33,7 @@ end
     # should be on the ground now.
     zeroctrl!(env.sim)
     env.sim.d.qvel .= 0.0
+    env.sim.d.time = 0.0
     forward!(env.sim)
     env
 end

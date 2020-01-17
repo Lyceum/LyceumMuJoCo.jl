@@ -117,7 +117,7 @@ end
     return (cj*cc+sj*ss, cj*sc-sj*cs, -(cj*ss+sj*cc), cj*cs-sj*sc)
 end
 @propagate_inbounds function reset!(env::PenHand)
-    reset_nofwd!(env.sim)
+    fastreset_nofwd!(env.sim)
     env.sim.m.body_quat[1, env.trg_id] = 1.0
     env.sim.m.body_quat[2, env.trg_id] = 0.0
     env.sim.m.body_quat[3, env.trg_id] = 0.0
@@ -126,7 +126,7 @@ end
     env
 end
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PenHand)
-    reset_nofwd!(env.sim)
+    fastreset_nofwd!(env.sim)
     desorien = SA_F64[rand(rng, Uniform(-1, 1)), rand(rng, Uniform(-1, 1)), 0.0]
 
     env.sim.m.body_quat[:, env.trg_id] .= _euler2quat(desorien) # TODO change the model

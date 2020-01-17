@@ -58,7 +58,7 @@ ArmHandPickup() = first(tconstruct(ArmHandPickup, 1))
 @inline obsspace(env::ArmHandPickup) = env.osp
 
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::ArmHandPickup)
-    reset_nofwd!(env.sim)
+    fastreset_nofwd!(env.sim)
     # randomize object starting position
     env.sim.d.qpos[1] = rand(rng, Uniform(-0.15, 0.15))
     env.sim.d.qpos[2] = rand(rng, Uniform(-0.1, 0.1))
@@ -111,12 +111,13 @@ end
 @propagate_inbounds function getreward(state, action, obs, env::ArmHandPickup)
     os = obsspace(env)(obs)
     _handball = os.handball / 0.5
-    _ballgoal = os.ballgoal / 0.25
+    _ballgoal = os.ballgoal / 0.5
 
     reward = -_handball
     if _handball < 0.06
-        reward = 2.0 - _ballgoal
+        reward = 2.0 - 2 * _ballgoal
         reward -= ( os.d_thumb + os.d_index + os.d_middle + os.d_ring + os.d_pinky ) * 0.1
+        #reward += os.ball[3]
     end
     reward
 end
