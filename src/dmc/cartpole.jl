@@ -13,12 +13,24 @@ end
 @inline getsim(env::Cartpole) = env.sim
 
 
+function reset!(env::Cartpole)
+    reset!(env.sim)
+    qpos = env.sim.dn.qpos
+    @uviews qpos begin
+        qpos[:hinge_1] = pi
+    end
+    forward!(env.sim)
+    env
+end
+
 function randreset!(rng::Random.AbstractRNG, env::Cartpole)
     reset!(env.sim)
     qpos = env.sim.dn.qpos
     @uviews qpos begin
         qpos[:slider] = 0.01 * randn(rng)
-        qpos[:hinge_1] = pi + 0.01 * randn(rng)
+        #qpos[:hinge_1] = pi + 0.01 * randn(rng)
+        qpos[:hinge_1] = rand(rng, Uniform(-pi, pi))
+
         randn!(rng, @view qpos[3:end])
         qpos[3:end] .*= 0.01
     end
@@ -46,7 +58,8 @@ function getreward(state, action, obs, env::Cartpole)
     small_velocity = min(tolerance(_angular_vel(shapedstate, env), margin = 5.0))
     small_velocity = (1 + small_velocity) / 2
 
-    mean(upright) * small_control * small_velocity * centered
+    mean(upright) * small_control * small_velocity * 2centered
+    #return mean(upright) * 2*centered * 2small_velocity #small_control * small_velocity * centered
 end
 
 function geteval(state, action, obs, env::Cartpole)
