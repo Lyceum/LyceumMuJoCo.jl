@@ -123,6 +123,9 @@ end
 ####
 
 include("suite/pointmass.jl")
+include("suite/humanoid_getup.jl")
+include("suite/penhand.jl")
+include("suite/armhand.jl")
 
 include("gym/swimmer-v2.jl")
 include("gym/hopper-v2.jl")
