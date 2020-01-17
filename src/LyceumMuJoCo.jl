@@ -128,4 +128,6 @@ include("gym/swimmer-v2.jl")
 include("gym/hopper-v2.jl")
 include("gym/walker2d-v2.jl")
 
+include("dmc/cartpole.jl")
+
 end # module
