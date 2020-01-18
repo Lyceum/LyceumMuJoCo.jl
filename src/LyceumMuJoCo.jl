@@ -138,6 +138,7 @@ end
 ####
 
 include("suite/pointmass.jl")
+include("suite/armhand/armhandpickup.jl")
 
 include("gym/swimmer-v2.jl")
 include("gym/hopper-v2.jl")
