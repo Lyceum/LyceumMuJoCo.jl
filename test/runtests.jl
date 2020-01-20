@@ -5,6 +5,7 @@ using MuJoCo: TESTMODELXML
 const LYCEUM_SUITE = [
     (LyceumMuJoCo.PointMass, (), ()),
     (LyceumMuJoCo.PenHand, (), ()),
+    (LyceumMuJoCo.ArmHandPickup, (), ()),
 ]
 
 const GYM = [
