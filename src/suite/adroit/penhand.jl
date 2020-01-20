@@ -49,20 +49,17 @@ struct PenHand{S <: MJSim, O, P} <: AbstractMuJoCoEnvironment
                                                    act_mid, act_rng,
                                                    obj_id,
                                                    obj_top, obj_bot,
-                                                   trg_top, trg_bot, 
+                                                   trg_top, trg_bot,
                                                    trg_id, eps_ball)
     end
 end
 
 function tconstruct(::Type{PenHand}, n::Integer)
-    # TODO
-    # TODO # fix the model path with git-tree
-    # TODO
-    modelpath = "/home/klowrey/Work/mj_envs/mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml"
+    modelpath = "mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml"
     return Tuple(PenHand(s) for s in LyceumBase.tconstruct(MJSim, n, modelpath, skip = 5))
 end
 function ensembleconstruct(::Type{PenHand}, n::Integer)
-    modelpath = "/home/klowrey/Work/mj_envs/mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml"
+    modelpath = "mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml"
     return Tuple(PenHand(MJSim(modelpath, skip = 5)) for m=1:n )
 end
 PenHand() = first(tconstruct(PenHand, 1))
@@ -161,7 +158,7 @@ end
 
     return reward
 end
-function LyceumBase.isdone(env::PenHand) 
+function LyceumBase.isdone(env::PenHand)
     objz = env.sim.d.xpos[3, env.obj_id]
     return objz < 0.075
 end
@@ -186,7 +183,7 @@ end
     o
 end
 
-@propagate_inbounds function geteval(::Any, ::Any, obs, env::PenHand) 
+@propagate_inbounds function geteval(::Any, ::Any, obs, env::PenHand)
     os = obsspace(env)(obs)
     objorien = siteSA(os.objorien)
     desorien = siteSA(os.desorien)
