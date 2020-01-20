@@ -226,7 +226,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LyceumBase]]
 deps = ["Adapt", "BenchmarkTools", "Dates", "Distributions", "ElasticArrays", "EllipsisNotation", "Future", "InteractiveUtils", "JLSO", "LibGit2", "LinearAlgebra", "Logging", "MacroTools", "Parameters", "Pkg", "Random", "Shapes", "StaticArrays", "Statistics", "Test", "TimeZones", "UnicodePlots", "UniversalLogger", "UnsafeArrays"]
-path = "/home/colinxs/workspace/juliadev/LyceumBase"
+git-tree-sha1 = "b08d33b09dcd61f8faf26460a6820c1c3829bc61"
+repo-rev = "master"
+repo-url = "https://github.com/Lyceum/LyceumBase.jl.git"
 uuid = "db31fed1-ca1e-4084-8a49-12fae1996a55"
 version = "0.1.0"
 
