@@ -11,12 +11,12 @@ struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnvironment
     end
 end
 
+PointMass() = first(tconstruct(PointMass, 1))
+
 function tconstruct(::Type{PointMass}, N::Integer)
     modelpath = joinpath(@__DIR__, "pointmass.xml")
     Tuple(PointMass(s) for s in tconstruct(MJSim, N, modelpath, skip=1))
 end
-
-PointMass() = first(tconstruct(PointMass, 1))
 
 
 @inline getsim(env::PointMass) = env.sim

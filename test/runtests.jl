@@ -12,9 +12,13 @@ const GYM = [
     (LyceumMuJoCo.Walker2DV2, (), ())
 ]
 
+const DMC = [
+    (LyceumMuJoCo.CartpoleSwingup, (), ()),
+]
+
 function test_group(group)
     @testset "Testing $etype\n    Args: $args.\n    Kwargs: $kwargs" for (etype, args, kwargs) in group
-        LyceumBase.test_env(etype, args...; kwargs...)
+        LyceumBase.testenv_correctness(etype, args...; kwargs...)
     end
 end
 
@@ -25,6 +29,7 @@ end
     @testset "Environments" begin
         @testset "Lyceum Suite" begin test_group(LYCEUM_SUITE) end
         @testset "Gym" begin test_group(GYM) end
+        @testset "DMC" begin test_group(DMC) end
     end
 
 end
