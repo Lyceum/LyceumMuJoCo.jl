@@ -66,44 +66,44 @@ ArmHandPickup() = first(tconstruct(ArmHandPickup, 1))
     env
 end
 
-@inline _sitedist(s1, s2, dmin) = min(euclidean(s1, s2), dmin)
 
 @propagate_inbounds function getobs!(obs, env::ArmHandPickup)
+    @boundscheck checkaxes(obsspace(env), obs)
+
     m, d = env.sim.m, env.sim.d
-    osp  = obsspace(env)
     sx   = d.site_xpos
     dmin = 0.5
 
-    _ball = siteSA(sx, env.ball)
-    _palm = siteSA(sx, env.palm)
-    _thumb  = siteSA(sx, env.thumb)
-    _index  = siteSA(sx, env.index)
-    _middle = siteSA(sx, env.middle)
-    _ring   = siteSA(sx, env.ring)
-    _pinky  = siteSA(sx, env.pinky)
+    ball = SPoint3D(sx, env.ball)
+    palm = SPoint3D(sx, env.palm)
+    thumb  = SPoint3D(sx, env.thumb)
+    index  = SPoint3D(sx, env.index)
+    middle = SPoint3D(sx, env.middle)
+    ring   = SPoint3D(sx, env.ring)
+    pinky  = SPoint3D(sx, env.pinky)
 
-    _goal = _ball - env.goal
+    goal = ball - env.goal
 
     @uviews obs @inbounds begin
-        shaped = osp(obs)
+        shaped = obsspace(env)(obs)
 
-        shaped.ball    .= _ball
-        shaped.palm    .= _palm .- _ball
+        shaped.ball    .= ball
+        shaped.palm    .= palm .- ball
 
-        shaped.handball = _sitedist(_palm, _ball, dmin)
-        shaped.ballgoal = _sitedist(_ball, _goal, dmin)
+        shaped.handball = _sitedist(palm, ball, dmin)
+        shaped.ballgoal = _sitedist(ball, goal, dmin)
 
-        shaped.d_thumb  = _sitedist(_thumb,  _ball, dmin)
-        shaped.d_index  = _sitedist(_index,  _ball, dmin)
-        shaped.d_middle = _sitedist(_middle, _ball, dmin)
-        shaped.d_ring   = _sitedist(_ring,   _ball, dmin)
-        shaped.d_pinky  = _sitedist(_pinky,  _ball, dmin)
-        shaped.a_thumb  = cosine_dist(_goal, _thumb)
-        shaped.a_index  = cosine_dist(_goal, _index)
-        shaped.a_middle = cosine_dist(_goal, _middle)
-        shaped.a_ring   = cosine_dist(_goal, _ring)
-        shaped.a_pinky  = cosine_dist(_goal, _pinky)
-        shaped.a_close  = cosine_dist(_middle, _thumb)
+        shaped.d_thumb  = _sitedist(thumb,  ball, dmin)
+        shaped.d_index  = _sitedist(index,  ball, dmin)
+        shaped.d_middle = _sitedist(middle, ball, dmin)
+        shaped.d_ring   = _sitedist(ring,   ball, dmin)
+        shaped.d_pinky  = _sitedist(pinky,  ball, dmin)
+        shaped.a_thumb  = cosine_dist(goal, thumb)
+        shaped.a_index  = cosine_dist(goal, index)
+        shaped.a_middle = cosine_dist(goal, middle)
+        shaped.a_ring   = cosine_dist(goal, ring)
+        shaped.a_pinky  = cosine_dist(goal, pinky)
+        shaped.a_close  = cosine_dist(middle, thumb)
     end
     obs
 end
@@ -128,3 +128,5 @@ end
 end
 
 
+
+@inline _sitedist(s1, s2, dmin) = min(euclidean(s1, s2), dmin)

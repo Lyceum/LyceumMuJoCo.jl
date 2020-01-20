@@ -52,7 +52,7 @@ import LyceumBase: statespace,
 
                    tconstruct
 
-using LyceumBase.Tools: perturb!
+using LyceumBase.Tools: perturb!, SPoint3D
 
 export # AbstractMuJoCoEnvironment interface (an addition to AbstractEnvironment's interface)
        AbstractMuJoCoEnvironment,
