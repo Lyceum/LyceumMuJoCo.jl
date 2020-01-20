@@ -1,7 +1,7 @@
-struct PenHand{S <: MJSim, O, P} <: AbstractMuJoCoEnvironment
-    sim::S
+struct PenHand{SIM<:MJSim,O,S} <: AbstractMuJoCoEnvironment
+    sim::SIM
     osp::O
-    ssp::P
+    ssp::S
     penlength::Float64
     tarlength::Float64
     act_mid::Vector{Float64}
@@ -54,21 +54,27 @@ struct PenHand{S <: MJSim, O, P} <: AbstractMuJoCoEnvironment
     end
 end
 
+PenHand() = first(tconstruct(PenHand, 1))
+
 function tconstruct(::Type{PenHand}, n::Integer)
     modelpath = joinpath(@__DIR__, "mj_envs/mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml")
-    return Tuple(PenHand(s) for s in LyceumBase.tconstruct(MJSim, n, modelpath, skip = 5))
+    return Tuple(PenHand(s) for s in tconstruct(MJSim, n, modelpath, skip = 5))
 end
+
 function ensembleconstruct(::Type{PenHand}, n::Integer)
     modelpath = joinpath(@__DIR__, "mj_envs/mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml")
     return Tuple(PenHand(MJSim(modelpath, skip = 5)) for m=1:n )
 end
-PenHand() = first(tconstruct(PenHand, 1))
+
 
 @inline getsim(env::PenHand) = env.sim
-@inline obsspace(env::PenHand) = env.osp
+
+
 @inline statespace(env::PenHand) = env.ssp
 
 @propagate_inbounds function setstate!(env::PenHand, s)
+    @boundscheck checkaxes(statespace(env), s)
+
     @uviews s begin
         simstate = view(s, 1:length(statespace(env.sim)))
         setstate!(env.sim, simstate)
@@ -80,7 +86,10 @@ PenHand() = first(tconstruct(PenHand, 1))
     env.sim.m.body_quat[4, env.trg_id] = objquat[4]
     env
 end
+
 @propagate_inbounds function getstate!(s, env::PenHand)
+    @boundscheck checkaxes(statespace(env), s)
+
     @uviews s begin
         simstate = view(s, 1:length(statespace(env.sim)))
         getstate!(simstate, env.sim)
@@ -94,25 +103,49 @@ end
     s
 end
 
+
+@inline obsspace(env::PenHand) = env.osp
+
+@propagate_inbounds function getobs!(o, env::PenHand)
+    @boundscheck checkaxes(obsspace(env), o)
+
+    m, d = env.sim.m, env.sim.d
+    osp  = obsspace(env)
+    qpos = d.qpos
+    qvel = d.qvel
+    sx   = d.site_xpos
+    xpos = d.xpos
+
+    @uviews o qpos qvel @inbounds begin
+        shaped = osp(o)
+        shaped.qpos     .= view(qpos, 1:m.nq-6)
+        shaped.objvel   .= view(qvel, (m.nv-5):m.nv)
+        shaped.objpos   .= SPoint3D(xpos, env.obj_id)
+        shaped.despos   .= env.eps_ball
+        shaped.objorien .= (SPoint3D(sx, env.obj_top) - SPoint3D(sx, env.obj_bot)) / env.penlength
+        shaped.desorien .= (SPoint3D(sx, env.trg_top) - SPoint3D(sx, env.trg_bot)) / env.tarlength
+    end
+    o
+end
+
+
 @propagate_inbounds function getaction!(a, env::PenHand)
+    @boundscheck checkaxes(actionspace(env), a)
+
     @. a = ( env.sim.d.ctrl - env.act_mid ) / env.act_rng
     a
 end
+
 @propagate_inbounds function setaction!(env::PenHand, a)
+    @boundscheck checkaxes(actionspace(env), a)
+
     env.sim.d.ctrl .= clamp.(a, -1.0, 1.0)
     @. env.sim.d.ctrl = env.act_mid + env.sim.d.ctrl * env.act_rng
     #forwardskip!(env.sim, MuJoCo.MJCore.mjSTAGE_ACC, false)
     env
 end
 
-@propagate_inbounds function _euler2quat(euler)
-    ai, aj, ak = euler
-    si, sj, sk = sin(ai), sin(aj), sin(ak)
-    ci, cj, ck = cos(ai), cos(aj), cos(ak)
-    cc, cs     = ci * ck, ci * sk
-    sc, ss     = si * ck, si * sk
-    return (cj*cc+sj*ss, cj*sc-sj*cs, -(cj*ss+sj*cc), cj*cs-sj*sc)
-end
+
 @propagate_inbounds function reset!(env::PenHand)
     fastreset_nofwd!(env.sim)
     env.sim.m.body_quat[1, env.trg_id] = 1.0
@@ -122,6 +155,7 @@ end
     forward!(env.sim)
     env
 end
+
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PenHand)
     fastreset_nofwd!(env.sim)
     desorien = SA_F64[rand(rng, Uniform(-1, 1)), rand(rng, Uniform(-1, 1)), 0.0]
@@ -132,7 +166,10 @@ end
     env
 end
 
+
 @propagate_inbounds function getreward(::Any, ::Any, obs, env::PenHand)
+    @boundscheck checkaxes(obsspace(env), obs)
+
     os = obsspace(env)(obs)
     objpos   = SPoint3D(os.objpos)
     despos   = SPoint3D(os.despos)
@@ -158,32 +195,10 @@ end
 
     return reward
 end
-function LyceumBase.isdone(env::PenHand)
-    objz = env.sim.d.xpos[3, env.obj_id]
-    return objz < 0.075
-end
-
-@propagate_inbounds function getobs!(o, env::PenHand)
-    m, d = env.sim.m, env.sim.d
-    osp  = obsspace(env)
-    qpos = d.qpos
-    qvel = d.qvel
-    sx   = d.site_xpos
-    xpos = d.xpos
-
-    @uviews o qpos qvel @inbounds begin
-        shaped = osp(o)
-        shaped.qpos     .= view(qpos, 1:m.nq-6)
-        shaped.objvel   .= view(qvel, (m.nv-5):m.nv)
-        shaped.objpos   .= SPoint3D(xpos, env.obj_id)
-        shaped.despos   .= env.eps_ball
-        shaped.objorien .= (SPoint3D(sx, env.obj_top) - SPoint3D(sx, env.obj_bot)) / env.penlength
-        shaped.desorien .= (SPoint3D(sx, env.trg_top) - SPoint3D(sx, env.trg_bot)) / env.tarlength
-    end
-    o
-end
 
 @propagate_inbounds function geteval(::Any, ::Any, obs, env::PenHand)
+    @boundscheck checkaxes(obsspace(env), obs)
+
     os = obsspace(env)(obs)
     objorien = SPoint3D(os.objorien)
     desorien = SPoint3D(os.desorien)
@@ -192,3 +207,17 @@ end
 end
 
 
+function isdone(env::PenHand)
+    objz = env.sim.d.xpos[3, env.obj_id]
+    return objz < 0.075
+end
+
+
+@propagate_inbounds function _euler2quat(euler)
+    ai, aj, ak = euler
+    si, sj, sk = sin(ai), sin(aj), sin(ak)
+    ci, cj, ck = cos(ai), cos(aj), cos(ak)
+    cc, cs     = ci * ck, ci * sk
+    sc, ss     = si * ck, si * sk
+    return (cj*cc+sj*ss, cj*sc-sj*cs, -(cj*ss+sj*cc), cj*cs-sj*sc)
+end
