@@ -55,11 +55,11 @@ struct PenHand{S <: MJSim, O, P} <: AbstractMuJoCoEnvironment
 end
 
 function tconstruct(::Type{PenHand}, n::Integer)
-    modelpath = "mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml"
+    modelpath = joinpath(@__DIR__, "mj_envs/mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml")
     return Tuple(PenHand(s) for s in LyceumBase.tconstruct(MJSim, n, modelpath, skip = 5))
 end
 function ensembleconstruct(::Type{PenHand}, n::Integer)
-    modelpath = "mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml"
+    modelpath = joinpath(@__DIR__, "mj_envs/mj_envs/hand_manipulation_suite/assets/DAPG_pen.xml")
     return Tuple(PenHand(MJSim(modelpath, skip = 5)) for m=1:n )
 end
 PenHand() = first(tconstruct(PenHand, 1))
