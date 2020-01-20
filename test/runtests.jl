@@ -15,7 +15,7 @@ const GYM = [
 
 function test_group(group)
     @testset "Testing $etype\n    Args: $args.\n    Kwargs: $kwargs" for (etype, args, kwargs) in group
-        LyceumBase.test_env(etype, args...; kwargs...)
+        LyceumBase.testenv_correctness(etype, args...; kwargs...)
     end
 end
 
