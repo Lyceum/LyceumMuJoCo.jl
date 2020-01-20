@@ -1,13 +1,28 @@
 module LyceumMuJoCo
 
-using UnsafeArrays, Shapes, StaticArrays, Distributions, Reexport, Random, LinearAlgebra, Distances
-
 using Base: @propagate_inbounds
+
+# Stdlib
+using Statistics
+using LinearAlgebra
+using Random
+
+# 3rd party
+using UnsafeArrays
+using StaticArrays
+using Distributions
+using Reexport
+using Distances
+
+# Lyceum
+using Shapes
+
 using MuJoCo
 using MuJoCo.MJCore: mjtNum
 
 @reexport using LyceumBase
 using LyceumBase: RealVec, @mustimplement
+
 
 import LyceumBase: statespace,
                    getstate!,
@@ -128,5 +143,8 @@ include("suite/adroit/penhand.jl")
 include("gym/swimmer-v2.jl")
 include("gym/hopper-v2.jl")
 include("gym/walker2d-v2.jl")
+
+include("dmc/rewards.jl")
+include("dmc/cartpole_swingup.jl")
 
 end # module
