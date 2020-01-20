@@ -18,11 +18,18 @@ struct CartpoleSwingup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
     sim::S
     obsspace::O
     function CartpoleSwingup(sim::MJSim)
-        ospace = MultiShape(
-            qpos = VectorShape(Float64, 2),
-            qvel = VectorShape(Float64, 2),
+        obsspace = MultiShape(
+            pos = MultiShape(
+                cart = ScalarShape(Float64),
+                pole_zz = ScalarShape(Float64),
+                pole_xz = ScalarShape(Float64),
+            ),
+            vel = MultiShape(
+                cart = ScalarShape(Float64),
+                pole_ang = ScalarShape(Float64),
+            ),
         )
-        env = new{typeof(sim), typeof(ospace)}(sim, ospace)
+        env = new{typeof(sim), typeof(obsspace)}(sim, obsspace)
         reset!(env)
     end
 end
@@ -40,66 +47,78 @@ end
 
 @inline obsspace(env::CartpoleSwingup) = env.obsspace
 
-function getobs!(obs, env::CartpoleSwingup)
-    shapedobs = obsspace(env)(obs)
-    copyto!(shapedobs.qpos, env.sim.d.qpos)
-    copyto!(shapedobs.qvel, env.sim.d.qvel)
+@inline function getobs!(obs, env::CartpoleSwingup)
+    @boundscheck checkaxes(obsspace(env), obs)
+
+    @uviews obs begin
+        sobs = obsspace(env)(obs)
+        sobs.pos.cart = env.sim.dn.qpos[:slider]
+        sobs.pos.pole_zz = env.sim.dn.xmat[:z, :z, :pole_1]
+        sobs.pos.pole_xz = env.sim.dn.xmat[:x, :z, :pole_1]
+        copyto!(sobs.vel, env.sim.d.qvel)
+    end
     obs
 end
 
 
-function getreward(state, action, obs, env::CartpoleSwingup)
-    shapedstate = statespace(env)(state)
+@inline function getreward(state, action, obs, env::CartpoleSwingup)
+    @boundscheck begin
+        checkaxes(statespace(env), state)
+        checkaxes(actionspace(env), action)
+        checkaxes(obsspace(env), obs)
+    end
 
-    upright = _pole_angle_cosine(shapedstate, env)
+    sobs = obsspace(env)(obs)
 
-    centered = tolerance(_cart_position(shapedstate, env), margin = 2)
+    upright = (sobs.pos.pole_zz + 1) / 2
+
+    centered = tolerance(sobs.pos.cart, margin = 2)
     centered = (1 + centered) / 2
 
     small_control = tolerance(first(action), margin = 1, value_at_margin = 0, sigmoid = quadratic)
     small_control = (4 + small_control) / 5
 
-    small_velocity = min(tolerance(_angular_vel(shapedstate, env), margin = 5.0))
+    small_velocity = min(tolerance(sobs.vel.pole_ang, margin = 5))
     small_velocity = (1 + small_velocity) / 2
 
-    mean(upright) * small_control * small_velocity * 2centered
-    #return mean(upright) * 2*centered * 2small_velocity #small_control * small_velocity * centered
+    mean(upright) * small_control * small_velocity * centered
 end
 
 
-function geteval(state, action, obs, env::CartpoleSwingup)
-    _pole_angle_cosine(statespace(env)(state), env)
+@inline function geteval(state, action, obs, env::CartpoleSwingup)
+    @boundscheck begin
+        checkaxes(obsspace(env), obs)
+    end
+    obsspace(env)(obs).pos.pole_zz
 end
 
 
 function reset!(env::CartpoleSwingup)
     reset_nofwd!(env.sim)
+
     qpos = env.sim.dn.qpos
     @uviews qpos begin
         qpos[:hinge_1] = pi
     end
+
     forward!(env.sim)
+
     env
 end
 
 function randreset!(rng::Random.AbstractRNG, env::CartpoleSwingup)
     reset_nofwd!(env.sim)
+
     qpos = env.sim.dn.qpos
     @uviews qpos begin
         qpos[:slider] = 0.01 * randn(rng)
-        qpos[:hinge_1] = rand(rng, Uniform(-pi, pi))
-
-        randn!(rng, @view qpos[3:end])
-        qpos[3:end] .*= 0.01
+        qpos[:hinge_1] = pi + 0.01*randn(rng)
     end
+
+    randn!(rng, env.sim.d.qvel)
+    env.sim.d.qvel .*= 0.01
+
     forward!(env.sim)
+
     env
 end
-
-
-function _pole_angle_cosine(shapedstate::ShapedView, env::CartpoleSwingup)
-    (cos(shapedstate.qpos[2]) + 1) / 2 # TODO
-end
-
-_angular_vel(shapedstate::ShapedView, env::CartpoleSwingup) = shapedstate.qvel[2]
-_cart_position(shapedstate::ShapedView, env::CartpoleSwingup) = shapedstate.qpos[1]
