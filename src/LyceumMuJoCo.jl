@@ -52,7 +52,7 @@ import LyceumBase: statespace,
 
                    tconstruct
 
-using LyceumBase.Tools: perturb!
+using LyceumBase.Tools: perturb!, SPoint3D
 
 export # AbstractMuJoCoEnvironment interface (an addition to AbstractEnvironment's interface)
        AbstractMuJoCoEnvironment,
@@ -138,6 +138,7 @@ end
 ####
 
 include("suite/pointmass.jl")
+include("suite/armhand/armhandpickup.jl")
 
 include("gym/swimmer-v2.jl")
 include("gym/hopper-v2.jl")
