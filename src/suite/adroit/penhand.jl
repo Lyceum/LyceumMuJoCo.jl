@@ -134,10 +134,10 @@ end
 
 @propagate_inbounds function getreward(::Any, ::Any, obs, env::PenHand)
     os = obsspace(env)(obs)
-    objpos   = siteSA(os.objpos)
-    despos   = siteSA(os.despos)
-    objorien = siteSA(os.objorien)
-    desorien = siteSA(os.desorien)
+    objpos   = SPoint3D(os.objpos)
+    despos   = SPoint3D(os.despos)
+    objorien = SPoint3D(os.objorien)
+    desorien = SPoint3D(os.desorien)
 
     dist = norm(objpos - despos)
     reward = -dist
@@ -175,18 +175,18 @@ end
         shaped = osp(o)
         shaped.qpos     .= view(qpos, 1:m.nq-6)
         shaped.objvel   .= view(qvel, (m.nv-5):m.nv)
-        shaped.objpos   .= siteSA(xpos, env.obj_id)
+        shaped.objpos   .= SPoint3D(xpos, env.obj_id)
         shaped.despos   .= env.eps_ball
-        shaped.objorien .= (siteSA(sx, env.obj_top) - siteSA(sx, env.obj_bot)) / env.penlength
-        shaped.desorien .= (siteSA(sx, env.trg_top) - siteSA(sx, env.trg_bot)) / env.tarlength
+        shaped.objorien .= (SPoint3D(sx, env.obj_top) - SPoint3D(sx, env.obj_bot)) / env.penlength
+        shaped.desorien .= (SPoint3D(sx, env.trg_top) - SPoint3D(sx, env.trg_bot)) / env.tarlength
     end
     o
 end
 
 @propagate_inbounds function geteval(::Any, ::Any, obs, env::PenHand)
     os = obsspace(env)(obs)
-    objorien = siteSA(os.objorien)
-    desorien = siteSA(os.desorien)
+    objorien = SPoint3D(os.objorien)
+    desorien = SPoint3D(os.desorien)
     similarity = dot(objorien, desorien)
     return similarity
 end
