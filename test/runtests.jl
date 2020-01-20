@@ -13,7 +13,7 @@ const GYM = [
 ]
 
 const DMC = [
-    (LyceumMuJoCo.Cartpole, (), ()),
+    (LyceumMuJoCo.CartpoleSwingup, (), ()),
 ]
 
 function test_group(group)

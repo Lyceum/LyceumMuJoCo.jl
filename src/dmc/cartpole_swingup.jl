@@ -1,19 +1,38 @@
-struct Cartpole{S<:MJSim} <: AbstractMuJoCoEnvironment
+# Copyright 2017 The dm_control Authors.
+# Copyright (c) 2019 Colin Summers, The Contributors of LyceumMuJoCo
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or  implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+
+struct CartpoleSwingup{S<:MJSim} <: AbstractMuJoCoEnvironment
     sim::S
+    function CartpoleSwingup(sim::MJSim)
+        reset!(new{typeof(sim)}(sim))
+    end
 end
 
-Cartpole() = first(tconstruct(Cartpole, 1))
+CartpoleSwingup() = first(tconstruct(CartpoleSwingup, 1))
 
-function tconstruct(::Type{Cartpole}, n::Integer)
+function tconstruct(::Type{CartpoleSwingup}, n::Integer)
     modelpath = joinpath(@__DIR__, "cartpole.xml")
-    return Tuple(Cartpole(s) for s in tconstruct(MJSim, n, modelpath, skip = 2))
+    Tuple(CartpoleSwingup(s) for s in tconstruct(MJSim, n, modelpath))
 end
 
 
-@inline getsim(env::Cartpole) = env.sim
+@inline getsim(env::CartpoleSwingup) = env.sim
 
 
-function reset!(env::Cartpole)
+function reset!(env::CartpoleSwingup)
     reset!(env.sim)
     qpos = env.sim.dn.qpos
     @uviews qpos begin
@@ -23,7 +42,7 @@ function reset!(env::Cartpole)
     env
 end
 
-function randreset!(rng::Random.AbstractRNG, env::Cartpole)
+function randreset!(rng::Random.AbstractRNG, env::CartpoleSwingup)
     reset!(env.sim)
     qpos = env.sim.dn.qpos
     @uviews qpos begin
@@ -38,13 +57,13 @@ function randreset!(rng::Random.AbstractRNG, env::Cartpole)
     env
 end
 
-obsspace(env::Cartpole) = VectorShape(Float64, 4)
-function getobs!(obs, env::Cartpole)
+obsspace(env::CartpoleSwingup) = VectorShape(Float64, 4)
+function getobs!(obs, env::CartpoleSwingup)
     obs[1:2] .= env.sim.d.qpos
     obs[3:end] .= env.sim.d.qvel
 end
 
-function getreward(state, action, obs, env::Cartpole)
+function getreward(state, action, obs, env::CartpoleSwingup)
     shapedstate = statespace(env)(state)
 
     upright = _pole_angle_cosine(shapedstate, env)
@@ -62,20 +81,20 @@ function getreward(state, action, obs, env::Cartpole)
     #return mean(upright) * 2*centered * 2small_velocity #small_control * small_velocity * centered
 end
 
-function geteval(state, action, obs, env::Cartpole)
+function geteval(state, action, obs, env::CartpoleSwingup)
     _pole_angle_cosine(statespace(env)(state), env)
 end
 
 
 
-function _pole_angle_cosine(shapedstate::ShapedView, env::Cartpole)
+function _pole_angle_cosine(shapedstate::ShapedView, env::CartpoleSwingup)
     (cos(shapedstate.qpos[2]) + 1) / 2 # TODO
 end
 
-#_angular_vel(shapedstate::ShapedView, env::Cartpole) = shapedstate.qvel[2:end]
-_angular_vel(shapedstate::ShapedView, env::Cartpole) = shapedstate.qvel[2]
+#_angular_vel(shapedstate::ShapedView, env::CartpoleSwingup) = shapedstate.qvel[2:end]
+_angular_vel(shapedstate::ShapedView, env::CartpoleSwingup) = shapedstate.qvel[2]
 
-_cart_position(shapedstate::ShapedView, env::Cartpole) = shapedstate.qpos[1]
+_cart_position(shapedstate::ShapedView, env::CartpoleSwingup) = shapedstate.qpos[1]
 
 
 

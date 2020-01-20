@@ -144,6 +144,6 @@ include("gym/hopper-v2.jl")
 include("gym/walker2d-v2.jl")
 
 include("dmc/rewards.jl")
-include("dmc/cartpole.jl")
+include("dmc/cartpole_swingup.jl")
 
 end # module
