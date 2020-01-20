@@ -3,7 +3,8 @@ using Test, Random, Shapes, Pkg, LinearAlgebra, BenchmarkTools
 using MuJoCo: TESTMODELXML
 
 const LYCEUM_SUITE = [
-    (LyceumMuJoCo.PointMass, (), ())
+    (LyceumMuJoCo.PointMass, (), ()),
+    (LyceumMuJoCo.PenHand, (), ()),
 ]
 
 const GYM = [
