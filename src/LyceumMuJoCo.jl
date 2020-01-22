@@ -13,6 +13,7 @@ using StaticArrays
 using Distributions
 using Reexport
 using Distances
+using Rotations
 
 # Lyceum
 using Shapes

@@ -156,12 +156,35 @@ end
     env
 end
 
+quatvec(q::Quat) = SVector(q.w, q.x, q.y, q.z)
+
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PenHand)
-    fastreset_nofwd!(env.sim)
-    desorien = SA_F64[rand(rng, Uniform(-1, 1)), rand(rng, Uniform(-1, 1)), 0.0]
+    # ---
+    #reset!(env)
+    # ---
 
-    env.sim.m.body_quat[:, env.trg_id] .= _euler2quat(desorien) # TODO change the model
+    # ---
+    #fastreset_nofwd!(env.sim)
+    #desorien = SA_F64[rand(rng, Uniform(-1, 1)), rand(rng, Uniform(-1, 1)), 0.0]
+    #env.sim.m.body_quat[:, env.trg_id] .= _euler2quat(desorien) # TODO change the model
+    #forward!(env.sim)
+    #env
+    # ---
 
+
+    # ---
+    reset_nofwd!(env.sim)
+    desorien0 = [rand(rng, Uniform(-1, 1)), rand(rng, Uniform(-1, 1)), 0.0]
+
+    r = RotXYZ(desorien0...)
+    #r = RotZYX(desorien0...)
+    q = quatvec(Quat(r))
+
+    #q2 = _euler2quat(desorien0)
+    #@info ([q...], [q2...])
+    #@assert isapprox([q...], [q2...])
+
+    env.sim.m.body_quat[:, env.trg_id] .= q
     forward!(env.sim)
     env
 end
@@ -203,12 +226,15 @@ end
     objorien = SPoint3D(os.objorien)
     desorien = SPoint3D(os.desorien)
     similarity = dot(objorien, desorien)
+
+    #@info (env.sim.d.xpos[:, env.obj_id], obsspace(env)(obs).objpos)
     return similarity
 end
 
 
-function isdone(env::PenHand)
-    objz = env.sim.d.xpos[3, env.obj_id]
+function isdone(::Any, ::Any, obs, env::PenHand)
+    shaped = obsspace(env)(obs)
+    objz = shaped.objpos[3]
     return objz < 0.075
 end
 
