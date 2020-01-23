@@ -14,6 +14,16 @@
 # limitations under the License.
 # ============================================================================
 
+"""
+    $(TYPEDEF)
+
+Swing up and balance an unactuated pole by applying forces to a cart at its base.
+The physical model conforms to (Barto et al., 1983).
+
+* **State: (4, )**
+* **Action: (1, )**
+* **Observation: (5, )**
+"""
 struct CartpoleSwingup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
     sim::S
     obsspace::O
