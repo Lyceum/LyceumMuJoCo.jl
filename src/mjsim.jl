@@ -231,7 +231,7 @@ Copy `sim.d.sensordata` into `obs`.
 """
 @propagate_inbounds function getobs!(obs::RealVec, sim::MJSim)
     @boundscheck checkaxes(obsspace(sim), obs)
-    @inbounds copyto!(obs, sim.d.obs)
+    @inbounds copyto!(obs, sim.d.sensordata)
 end
 
 """
