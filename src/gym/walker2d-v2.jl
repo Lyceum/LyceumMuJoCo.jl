@@ -1,3 +1,14 @@
+"""
+    $(TYPEDEF)
+
+Make a two-dimensional bipedal robot walk forward as fast as possible. The robot model is
+based on the work T. Erez, Y. Tassa, and E. Todorov: ["Infinite Horizon Model Predictive
+Control for Nonlinear Periodic Tasks"](https://homes.cs.washington.edu/~todorov/papers/ErezRSS11.pdf), 2011.
+
+* **State: (29, )**
+* **Action: (6, )**
+* **Observation: (7, )**
+"""
 mutable struct Walker2DV2{SIM, S, O} <: AbstractMuJoCoEnvironment
     sim::SIM
     statespace::S

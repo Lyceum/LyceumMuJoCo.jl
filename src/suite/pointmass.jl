@@ -5,9 +5,11 @@
 task is simply to move a 2D point mass to a target position by applying x and y forces
 to the mass.
 
-* **State: (4, )**
-* **Action: (1, )**
-* **Observation: (5, )**
+# Spaces
+
+* **State: (13, )**
+* **Action: (2, )**
+* **Observation: (6, )**
 """
 struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnvironment
     sim::S
