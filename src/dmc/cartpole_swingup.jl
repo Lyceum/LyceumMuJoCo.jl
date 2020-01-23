@@ -14,6 +14,19 @@
 # limitations under the License.
 # ============================================================================
 
+"""
+    $(TYPEDEF)
+
+Swing up and balance an unactuated pole by applying forces to a cart at its base. The
+physical model conforms to [Neuronlike adaptive elements that can solve difficult learning
+control problems](https://ieeexplore.ieee.org/document/6313077) (Barto et al., 1983).
+
+# Spaces
+
+* **State: (7, )**
+* **Action: (1, )**
+* **Observation: (5, )**
+"""
 struct CartpoleSwingup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
     sim::S
     obsspace::O

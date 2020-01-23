@@ -1,3 +1,15 @@
+"""
+    $(TYPEDEF)
+
+This task involves a 3-link swimming robot in a viscous fluid, where the goal is to make
+it swim forward as fast as possible, by actuating the two joints. The origins of task can
+be traced back to Remi Coulom's thesis: ["Reinforcement Learning Using Neural Networks,
+with Applications to Motor Control"] (https://tel.archives-ouvertes.fr/tel-00003985/file/tel-00003985.pdf)
+
+* **State: (17, )**
+* **Action: (2, )**
+* **Observation: (8, )**
+"""
 mutable struct SwimmerV2{SIM <: MJSim, S <: AbstractShape, O <: AbstractShape} <: AbstractMuJoCoEnvironment
     sim::SIM
     statespace::S

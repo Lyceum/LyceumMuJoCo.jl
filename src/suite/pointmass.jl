@@ -1,3 +1,16 @@
+"""
+    $(TYPEDEF)
+
+`PointMass` is a simple environment useful for trying out and debugging new algorithms. The
+task is simply to move a 2D point mass to a target position by applying x and y forces
+to the mass.
+
+# Spaces
+
+* **State: (13, )**
+* **Action: (2, )**
+* **Observation: (6, )**
+"""
 struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnvironment
     sim::S
     obsspace::O

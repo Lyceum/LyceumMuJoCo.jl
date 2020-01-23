@@ -13,6 +13,7 @@ using StaticArrays
 using Distributions
 using Reexport
 using Distances
+using DocStringExtensions
 
 # Lyceum
 using Shapes
@@ -61,9 +62,9 @@ export # AbstractMuJoCoEnvironment interface (an addition to AbstractEnvironment
        # MJSim interface
        MJSim,
        setstate!,
-       sensorspace,
-       getsensor!,
-       getsensor,
+       obsspace,
+       getobs!,
+       getobs,
        zeroctrl!,
        zerofullctrl!,
        forward!
@@ -77,6 +78,13 @@ include("mjsim.jl")
 #### AbstractMuJoCoEnvironment Interface
 ####
 
+"""
+    $(TYPEDEF)
+
+The supertype for all MuJoCo-based environments. Subtypes of `AbstractMuJoCoEnvironment`
+provide default functions for state, action, and observation (e.g. setstate!). For more
+information, see the documentation for [`MJSim`](@ref).
+"""
 abstract type AbstractMuJoCoEnvironment <: AbstractEnvironment end
 
 
@@ -97,9 +105,9 @@ end
 
 
 
-@propagate_inbounds obsspace(env::AbstractMuJoCoEnvironment) = sensorspace(getsim(env))
+@propagate_inbounds obsspace(env::AbstractMuJoCoEnvironment) = obsspace(getsim(env))
 
-@propagate_inbounds getobs!(obs, env::AbstractMuJoCoEnvironment) = getsensor!(obs, getsim(env))
+@propagate_inbounds getobs!(obs, env::AbstractMuJoCoEnvironment) = getobs!(obs, getsim(env))
 
 
 
@@ -129,7 +137,13 @@ end
 @propagate_inbounds timestep(env::AbstractMuJoCoEnvironment) = timestep(getsim(env))
 
 
+"""
+    $(TYPEDSIGNATURES)
 
+Return `env`'s underlying `MJSim` that defines the MuJoCo physics simulation. This is used
+for providing default state, action, and observation functions as well as the visualizer
+provided by LyceumMuJoCoViz.
+"""
 @mustimplement getsim(env::AbstractMuJoCoEnvironment)
 
 

@@ -1,3 +1,16 @@
+"""
+    $(TYPEDEF)
+
+Make a two-dimensional, one-legged robot walk forward as fast as possible. The robot model is
+based on the work T. Erez, Y. Tassa, and E. Todorov: ["Infinite Horizon Model Predictive
+Control for Nonlinear Periodic Tasks"](https://homes.cs.washington.edu/~todorov/papers/ErezRSS11.pdf), 2011.
+
+# Spaces
+
+* **State: (20, )**
+* **Action: (3, )**
+* **Observation: (11, )**
+"""
 mutable struct HopperV2{SIM, S, O} <: AbstractMuJoCoEnvironment
     sim::SIM
     statespace::S
