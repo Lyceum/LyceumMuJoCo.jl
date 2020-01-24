@@ -25,8 +25,6 @@ end
 
 @testset "LyceumMuJoCo.jl" begin
 
-    @testset "MJSim" begin include("mjsim.jl") end
-
     @testset "Environments" begin
         @testset "Lyceum Suite" begin test_group(LYCEUM_SUITE) end
         @testset "Gym" begin test_group(GYM) end
