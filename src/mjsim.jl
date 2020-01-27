@@ -1,7 +1,3 @@
-####
-#### Core interface
-####
-
 const MJSTATE_FIELDS = (:time, :qpos, :qvel, :act, :mocap_pos, :mocap_quat, :userdata, :qacc_warmstart)
 const MJACTION_FIELDS = (:ctrl, :qfrc_applied, :xfrc_applied)
 
@@ -20,28 +16,22 @@ state, observation, and action in MuJoCo:
 - Observation: `sensordata`
 - Action: `(ctrl, qfrc_applied, xfrc_applied)`
 
-MJSim follows this convention.
+MJSim follows this definition except for actions (e.g. `setaction!``), which is
+composed of just `ctrl` by default.
 
-For more information, see the "State and control" section of www.mujoco.org/book/programming.html
+For more information, see the "State and control" section of the
+[MuJoCo Documentation](www.mujoco.org/book/programming.html)
 
-# Constructors
-    MJSim(m::jlModel, d::jlData; skip::Integer = 1)
-    MJSim(modelpath::String; skip::Integer = 1)
-
-Construct a `MJSim` from either `m` and `d` or the MJCF/MJB model file located
-at `modelpath`, with skip `skip`.
-
-See MuJoCo.jl and the MuJoCo documentation (www.mujoco.org) for further
-documentation of `jlData`, `jlModel`, as well as the MJCF and MJB file formats.
 
 # Fields
+
 - `m::jlModel`: contains the model description and is expected to remain constant.
 - `d::jlData`: contains all dynamic variables and intermediate results.
 - `mn::Tuple`: named-access version of `MJSim.m` provided by AxisArrays.jl.
 - `dn::Tuple`: named-access version of `MJSim.d` provided by AxisArrays.jl.
+- `initstate::Vector{mjtNum}`: The initial state vector at the time when this MJSim was constructed.
 - `skip::Int`: the number of times the simulation is integrated, yielding an
   effective simulation timestep of `skip * m.opt.timestep`.
-- `initstate::Vector{mjtNum}`: The initial state vector at the time when this MJSim was constructed.
 """
 struct MJSim{MN, DN, S, SE, A}
     m::jlModel
@@ -53,9 +43,14 @@ struct MJSim{MN, DN, S, SE, A}
 
     # internal
     statespace::S
-    sensorspace::SE
+    obsspace::SE
     actionspace::A
 
+    @doc """
+        $(TYPEDSIGNATURES)
+
+    Construct an MJSim from `m` and `d`, with skip `skip`.
+    """
     function MJSim(m::jlModel, d::jlData; skip::Integer = DEFAULT_SKIP)
         check_skip(skip)
 
@@ -75,9 +70,9 @@ struct MJSim{MN, DN, S, SE, A}
               shape = dof == 1 ? ScalarShape(mjtNum) : VectorShape(mjtNum, dof)
               name => shape
             end
-            sensorspace = MultiShape(nameshapes...)
+            obsspace = MultiShape(nameshapes...)
         else
-            sensorspace = VectorShape(mjtNum, 0)
+            obsspace = VectorShape(mjtNum, 0)
         end
 
         if m.nu > 0
@@ -97,20 +92,24 @@ struct MJSim{MN, DN, S, SE, A}
             ndims(field) > 1 ? vec(field) : field
         end
 
-    	sim = new{typeof(m_named), typeof(d_named), typeof(statespace), typeof(sensorspace), typeof(actionspace)}(m, d, m_named, d_named,
+    	sim = new{typeof(m_named), typeof(d_named), typeof(statespace), typeof(obsspace), typeof(actionspace)}(m, d, m_named, d_named,
             initstate, skip,
-            statespace, sensorspace, actionspace)
+            statespace, obsspace, actionspace)
 
         forward!(sim)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Construct an `MJSim` the MJCF or MJB model file located at `modelpath`, with skip `skip`.
+"""
 function MJSim(modelpath::String; skip::Integer = DEFAULT_SKIP)
     m = jlModel(modelpath)
     d = jlData(m)
     MJSim(m, d, skip=skip)
 end
-
 
 function LyceumBase.tconstruct(::Type{MJSim}, N::Integer, m::jlModel; skip::Integer = DEFAULT_SKIP, can_share_model::Bool=DEFAULT_CAN_SHARE_MODEL)
     N > 0 || throw(ArgumentError("N must be > 0"))
@@ -129,8 +128,21 @@ function LyceumBase.tconstruct(::Type{MJSim}, N::Integer, modelpath::AbstractStr
 end
 
 
+"""
+    $(TYPEDSIGNATURES)
+
+Return a description of `sim`'s statespace.
+"""
 @inline statespace(sim::MJSim) = sim.statespace
 
+"""
+    $(SIGNATURES)
+
+Copy the following state fields from `sim.d` into `state`:
+```
+($(join(map(string, MJSTATE_FIELDS), ", ")))
+```
+"""
 @propagate_inbounds function getstate!(state::RealVec, sim::MJSim)
     @boundscheck checkaxes(statespace(sim), state)
     shaped = statespace(sim)(state)
@@ -138,6 +150,14 @@ end
     state
 end
 
+"""
+    $(SIGNATURES)
+
+Return a flattened vector of the following state fields from `sim.d`:
+```
+($(join(map(string, MJSTATE_FIELDS), ", ")))
+```
+"""
 @propagate_inbounds getstate(sim::MJSim) = getstate!(allocate(statespace(sim)), sim)
 
 
@@ -160,6 +180,14 @@ end
 #    over qacc_warmstart so that the above equality holds true. This means that mjData is left
 #    in a slightly inconsitent state (qacc_warmstart will be slightly out of sync).
 
+"""
+    $(SIGNATURES)
+
+Copy the components of `state` to their respective fields in `sim.d`, namely:
+```
+($(join(map(string, MJSTATE_FIELDS), ", ")))
+```
+"""
 @propagate_inbounds function setstate!(sim::MJSim, state::RealVec)
     mj_resetData(sim.m, sim.d)
     copystate!(sim, state)
@@ -189,25 +217,60 @@ end
 end
 
 
-@inline sensorspace(sim::MJSim) = sim.sensorspace
+"""
+    $(TYPEDSIGNATURES)
 
-@propagate_inbounds function getsensor!(sensordata::RealVec, sim::MJSim)
-    @boundscheck checkaxes(sensorspace(sim), sensordata)
-    @inbounds copyto!(sensordata, sim.d.sensordata)
+Return a description of `sim`'s observation space.
+"""
+@inline obsspace(sim::MJSim) = sim.obsspace
+
+"""
+    $(SIGNATURES)
+
+Copy `sim.d.sensordata` into `obs`.
+"""
+@propagate_inbounds function getobs!(obs::RealVec, sim::MJSim)
+    @boundscheck checkaxes(obsspace(sim), obs)
+    @inbounds copyto!(obs, sim.d.sensordata)
 end
 
-@propagate_inbounds getsensor(sim::MJSim) = getsensor!(allocate(sim.sensorspace), sim)
+"""
+    $(TYPEDSIGNATURES)
+
+Return a copy of `sim.d.sensordata`.
+"""
+@propagate_inbounds getobs(sim::MJSim) = getobs!(allocate(sim.obsspace), sim)
 
 
+"""
+    $(TYPEDSIGNATURES)
+
+Return a description of `sim`'s action space.
+"""
 @inline actionspace(sim::MJSim) = sim.actionspace
 
+"""
+    $(TYPEDSIGNATURES)
+
+Copy `sim.d.ctrl` into `action`.
+"""
 @propagate_inbounds function getaction!(action::RealVec, sim::MJSim)
     @boundscheck checkaxes(actionspace(sim), action)
     @inbounds copyto!(action, sim.d.ctrl)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Return a copy of `sim.d.ctrl`.
+"""
 @propagate_inbounds getaction(sim::MJSim, action::RealVec) = getaction!(allocate(sim.actionspace), sim)
 
+"""
+    $(TYPEDSIGNATURES)
+
+Copy `action` into `sim.d.ctrl` into `action` and compute the new forward dynamics.
+"""
 @propagate_inbounds function setaction!(sim::MJSim, action::RealVec)
     forwardskip!(setaction_nofwd!(sim, action), MJCore.mjSTAGE_VEL)
 end
@@ -231,9 +294,9 @@ end
 
 
 """
-    step!(sim::MJSim[, skip::Integer])
+    $(TYPEDSIGNATURES)
 
-Step the simulation by `skip` steps, where `skip` defaults to `MJSim.skip`.
+Step the simulation by `skip` steps, where `skip` defaults to `sim.skip`.
 
 State-dependent controls (e.g. the `ctrl`, `xfrc_applied`, `qfrc_applied`
 fields of `sim.d`) should be set before calling `step!`.
@@ -254,20 +317,22 @@ end
 
 
 """
-    zeroctrl!(sim::MJSim)
+    $(TYPEDSIGNATURES)
 
 Zero out `sim.d.ctrl` and compute new forward dynamics.
 """
 @inline zeroctrl!(sim::MJSim) = forwardskip!(zeroctrl_nofwd!(sim), MJCore.mjSTAGE_VEL)
+
 @inline zeroctrl_nofwd!(sim::MJSim) = (fill!(sim.d.ctrl, zero(mjtNum)); sim)
 
 """
-    zerofullctrl!(sim::MJSim)
+    $(TYPEDSIGNATURES)
 
 Zero out all of the fields in `sim.d` that contribute to forward dynamics calculations,
 namely `ctrl`, `qfrc_applied`, and `xfrc_applied`, and compute the forward dynamics.
 """
 @inline zerofullctrl!(sim::MJSim) = forwardskip!(zerofullctrl_nofwd!(sim), MJCore.mjSTAGE_VEL)
+
 @inline function zerofullctrl_nofwd!(sim::MJSim)
     fill!(sim.d.ctrl, zero(mjtNum))
     fill!(sim.d.qfrc_applied, zero(mjtNum))
@@ -276,10 +341,10 @@ namely `ctrl`, `qfrc_applied`, and `xfrc_applied`, and compute the forward dynam
 end
 
 """
-    masscenter(sim::MJSim)
+    $(TYPEDSIGNATURES)
 
-Calculate the center of mass of the entire simulation by computing the mass-weighted
-sum of the Cartesian coordinates of each body in the world frame.
+Calculate the center of mass of all the bodies in simulation `sim` by computing the
+mass-weighted sum of the Cartesian coordinates of each body in the world frame.
 """
 function masscenter(sim::MJSim)
     mcntr = zeros(SVector{3, Float64})
@@ -296,21 +361,19 @@ function masscenter(sim::MJSim)
 end
 
 """
-    forward!(sim::MJSim)
+    $(TYPEDSIGNATURES)
 
 Compute the forward dynamics of the simulation and store them in `sim.d`.
-Equivalent to `mj_forward(sim.m, sim.d)`
+Equivalent to `mj_forward(sim.m, sim.d)`.
 """
 @inline forward!(sim::MJSim) = (mj_forward(sim.m, sim.d); sim)
 
 """
-    forwardskip!(sim::MJSim, skipstage::MJCore.mjtStage=MJCore.mjSTAGE_NONE, skipsensor::Bool=false)
+    $(TYPEDSIGNATURES)
 
 Compute the forward dynamics of the simulation and store them in `sim.d`, optionally
-skipping parts of the dynamics calculation. Equivalent to
-`mj_forwardSkip(sim.m, sim.d, skipstage, skipsensor)`.
-
-More information can be found at http://mujoco.org/book/programming.html under 'Forward Dynamics'
+skipping parts of the dynamics calculation. Equivalent to `mj_forwardSkip(sim.m, sim.d,
+skipstage, skipsensor)`.
 """
 @inline function forwardskip!(sim::MJSim, skipstage::MJCore.mjtStage=MJCore.mjSTAGE_NONE, skipsensor::Bool=false)
     mj_forwardSkip(sim.m, sim.d, skipstage, skipsensor)
@@ -318,24 +381,23 @@ More information can be found at http://mujoco.org/book/programming.html under '
 end
 
 """
-    timestep(sim::MJSim)
+    $(TYPEDSIGNATURES)
 
 Return the effective timestep of `sim`. Equivalent to `sim.skip * sim.m.opt.timestep`.
 """
 @inline timestep(sim::MJSim) = sim.m.opt.timestep * sim.skip
 
 """
-    Base.time(sim::MJSim)
+    $(TYPEDSIGNATURES)
 
-Return the current simulation time, in seconds, of `sim`.
-Equivalent to sim.d.time.
+Return the current simulation time, in seconds, of `sim`. Equivalent to sim.d.time.
 """
 @inline Base.time(sim::MJSim) = sim.d.time
 
 @inline getsim(sim::MJSim) = sim
 
 # TODO(cxs):: Make more informative. This is a temp fix for those gawdawful error messages from sim.{mn, dn}.
-Base.show(io::IO, ::MIME"text/plain", sim::Union{MJSim, Type{<:MJSim}}) = show(io, sim)
-Base.show(io::IO, sim::Union{MJSim, Type{<:MJSim}}) = print(io, "MJSim")
+Base.show(io::IO, ::MIME"text/plain", sim::Union{<:MJSim, Type{<:MJSim}}) = show(io, sim)
+Base.show(io::IO, sim::Union{<:MJSim, Type{<:MJSim}}) = print(io, "MJSim")
 
 @inline check_skip(skip) = skip > 0 || throw(ArgumentError("`skip` must be > 0"))

@@ -1,3 +1,16 @@
+"""
+    $(TYPEDEF)
+
+Pickup a block using a robot arm modeled after the [Modular Prosthetic Limb]
+(https://www.jhuapl.edu/Content/techdigest/pdf/V30-N03/30-3-Johannes.pdf)
+developed by the Applied Physics Laboratory, The Johns Hopkins University.
+
+# Spaces
+
+* **State: (106, )**
+* **Action: (36, )**
+* **Observation: (19, )**
+"""
 struct ArmHandPickup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
     sim::S
     obsspace::O
