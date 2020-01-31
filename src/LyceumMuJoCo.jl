@@ -13,6 +13,7 @@ using StaticArrays
 using Distributions
 using Reexport
 using Distances
+using Rotations
 using DocStringExtensions
 
 # Lyceum
@@ -152,6 +153,7 @@ provided by LyceumMuJoCoViz.
 ####
 
 include("suite/pointmass.jl")
+include("suite/adroit/penhand.jl")
 include("suite/armhand/armhandpickup.jl")
 
 include("gym/swimmer-v2.jl")
