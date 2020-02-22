@@ -127,9 +127,6 @@ end
 end
 
 function isdone(state, ::Any, ::Any, env::HumanoidGetup)
-    #qvel = env.sim.d.qvel
-    #MAX_SPEED = 60.0
-    #any(x->abs(x)>MAX_SPEED, qvel) && return true
     return false
 end
 
