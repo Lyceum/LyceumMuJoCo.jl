@@ -1,3 +1,4 @@
+using LyceumDevTools.TestUtil
 using LyceumMuJoCo, LyceumBase
 using Test, Random, Shapes, Pkg, LinearAlgebra, BenchmarkTools
 using MuJoCo: TESTMODELXML
@@ -19,7 +20,7 @@ const DMC = [
 
 function test_group(group)
     @testset "Testing $etype\n    Args: $args.\n    Kwargs: $kwargs" for (etype, args, kwargs) in group
-        LyceumBase.testenv_correctness(etype, args...; kwargs...)
+        testenv_correctness(etype, args...; kwargs...)
     end
 end
 
