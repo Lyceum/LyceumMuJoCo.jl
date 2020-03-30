@@ -22,7 +22,8 @@ using MuJoCo
 using MuJoCo.MJCore: mjtNum
 
 @reexport using LyceumBase
-using LyceumBase: RealVec, @mustimplement
+using LyceumBase: @mustimplement
+const RealVec = AbstractVector{<:Real}
 
 
 import LyceumBase: statespace,
