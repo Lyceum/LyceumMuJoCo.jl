@@ -10,20 +10,20 @@ with Applications to Motor Control"] (https://tel.archives-ouvertes.fr/tel-00003
 * **Action: (2, )**
 * **Observation: (8, )**
 """
-mutable struct SwimmerV2{SIM <: MJSim, S <: AbstractShape, O <: AbstractShape} <: AbstractMuJoCoEnvironment
-    sim::SIM
-    statespace::S
-    obsspace::O
+mutable struct SwimmerV2{Sim, SSpace, OSpace} <: AbstractMuJoCoEnvironment
+    sim::Sim
+    statespace::SSpace
+    observationspace::OSpace
     last_torso_x::Float64
     randreset_distribution::Uniform{Float64}
 
-    function SwimmerV2(sim::SIM) where {SIM <: MJSim}
+    function SwimmerV2(sim::MJSim)
         sspace = MultiShape(simstate=statespace(sim), last_torso_x=ScalarShape(Float64))
         ospace = MultiShape(
             qpos_cropped = VectorShape(Float64, sim.m.nq - 2),
             qvel=statespace(sim).qvel
         )
-        env = new{SIM, typeof(sspace), typeof(ospace)}(
+        env = new{typeof(sim), typeof(sspace), typeof(ospace)}(
             sim,
             sspace,
             ospace,
@@ -36,17 +36,18 @@ end
 
 SwimmerV2() = first(tconstruct(SwimmerV2, 1))
 
-function tconstruct(::Type{SwimmerV2}, n::Integer)
+function LyceumBase.tconstruct(::Type{SwimmerV2}, n::Integer)
     modelpath = joinpath(@__DIR__, "swimmer.xml")
     Tuple(SwimmerV2(s) for s in tconstruct(MJSim, n, modelpath, skip=4))
 end
 
+
 @inline getsim(env::SwimmerV2) = env.sim
 
 
-@inline statespace(env::SwimmerV2) = env.statespace
+@inline LyceumBase.statespace(env::SwimmerV2) = env.statespace
 
-function getstate!(state, env::SwimmerV2)
+function LyceumBase.getstate!(state, env::SwimmerV2)
     checkaxes(statespace(env), state)
     @uviews state begin
         shaped = statespace(env)(state)
@@ -56,7 +57,7 @@ function getstate!(state, env::SwimmerV2)
     state
 end
 
-function setstate!(env::SwimmerV2, state)
+function LyceumBase.setstate!(env::SwimmerV2, state)
     checkaxes(statespace(env), state)
     @uviews state begin
         shaped = statespace(env)(state)
@@ -67,13 +68,13 @@ function setstate!(env::SwimmerV2, state)
 end
 
 
-@inline obsspace(env::SwimmerV2) = env.obsspace
+@inline LyceumBase.observationspace(env::SwimmerV2) = env.observationspace
 
-function getobs!(obs, env::SwimmerV2)
-    checkaxes(obsspace(env), obs)
+function LyceumBase.getobservation!(obs, env::SwimmerV2)
+    checkaxes(observationspace(env), obs)
     qpos = env.sim.d.qpos
     @views @uviews obs qpos begin
-        shaped = obsspace(env)(obs)
+        shaped = observationspace(env)(obs)
         copyto!(shaped.qpos_cropped, qpos[3:end])
         copyto!(shaped.qvel, env.sim.d.qvel)
     end
@@ -81,7 +82,7 @@ function getobs!(obs, env::SwimmerV2)
 end
 
 
-function getreward(state, action, ::Any, env::SwimmerV2)
+function LyceumBase.getreward(state, action, ::Any, env::SwimmerV2)
     checkaxes(statespace(env), state)
     checkaxes(actionspace(env), action)
     @uviews state begin
@@ -92,21 +93,14 @@ function getreward(state, action, ::Any, env::SwimmerV2)
     end
 end
 
-function geteval(state, action, obs, env::SwimmerV2)
-    checkaxes(statespace(env), state)
-    @uviews state begin
-        _torso_x(statespace(env)(state), env)
-    end
-end
 
-
-function reset!(env::SwimmerV2)
+function LyceumBase.reset!(env::SwimmerV2)
     reset!(env.sim)
     env.last_torso_x = _torso_x(env)
     env
 end
 
-function randreset!(rng::AbstractRNG, env::SwimmerV2)
+function LyceumBase.randreset!(rng::AbstractRNG, env::SwimmerV2)
     reset_nofwd!(env.sim)
     perturb!(rng, env.randreset_distribution, env.sim.d.qpos)
     perturb!(rng, env.randreset_distribution, env.sim.d.qvel)
@@ -115,7 +109,7 @@ function randreset!(rng::AbstractRNG, env::SwimmerV2)
     env
 end
 
-function step!(env::SwimmerV2)
+function LyceumBase.step!(env::SwimmerV2)
     env.last_torso_x = _torso_x(env)
     step!(env.sim)
     env

@@ -11,9 +11,9 @@ developed by the Applied Physics Laboratory, The Johns Hopkins University.
 * **Action: (36, )**
 * **Observation: (19, )**
 """
-struct ArmHandPickup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
-    sim::S
-    obsspace::O
+struct ArmHandPickup{Sim,OSpace} <: AbstractMuJoCoEnvironment
+    sim::Sim
+    observationspace::OSpace
     ball::Int
     palm::Int
     thumb::Int
@@ -27,7 +27,7 @@ struct ArmHandPickup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
         m = sim.m
         mn, dn = sim.mn, sim.dn
 
-        obsspace = MultiShape(
+        observationspace = MultiShape(
             d_thumb = ScalarShape(Float64),
             d_index = ScalarShape(Float64),
             d_middle = ScalarShape(Float64),
@@ -56,9 +56,9 @@ struct ArmHandPickup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
 
         goal = SA_F64[0.0, 0.2, 0.5]
 
-        new{typeof(sim),typeof(obsspace)}(
+        new{typeof(sim),typeof(observationspace)}(
             sim,
-            obsspace,
+            observationspace,
             ball,
             palm,
             thumb,
@@ -73,7 +73,7 @@ end
 
 ArmHandPickup() = first(tconstruct(ArmHandPickup, 1))
 
-function tconstruct(::Type{ArmHandPickup}, n::Integer)
+function LyceumBase.tconstruct(::Type{ArmHandPickup}, n::Integer)
     modelpath = joinpath(@__DIR__, "armhand.xml")
     Tuple(ArmHandPickup(s) for s in tconstruct(MJSim, n, modelpath, skip = 3))
 end
@@ -82,10 +82,10 @@ end
 @inline getsim(env::ArmHandPickup) = env.sim
 
 
-@inline obsspace(env::ArmHandPickup) = env.obsspace
+@inline LyceumBase.observationspace(env::ArmHandPickup) = env.observationspace
 
-@propagate_inbounds function getobs!(obs, env::ArmHandPickup)
-    @boundscheck checkaxes(obsspace(env), obs)
+@propagate_inbounds function LyceumBase.getobservation!(obs, env::ArmHandPickup)
+    @boundscheck checkaxes(observationspace(env), obs)
 
     m, d = env.sim.m, env.sim.d
     sx = d.site_xpos
@@ -101,7 +101,7 @@ end
     goal = ball - env.goal
 
     @uviews obs @inbounds begin
-        shaped = obsspace(env)(obs)
+        shaped = observationspace(env)(obs)
 
         shaped.ball .= ball
         shaped.palm .= palm .- ball
@@ -126,10 +126,10 @@ end
 end
 
 
-@propagate_inbounds function getreward(state, action, obs, env::ArmHandPickup)
-    @boundscheck checkaxes(obsspace(env), obs)
+@propagate_inbounds function LyceumBase.getreward(state, action, obs, env::ArmHandPickup)
+    @boundscheck checkaxes(observationspace(env), obs)
 
-    os = obsspace(env)(obs)
+    os = observationspace(env)(obs)
     handball = os.handball / 0.5
     ballgoal = os.ballgoal / 0.5
 
@@ -141,13 +141,7 @@ end
     reward
 end
 
-@propagate_inbounds function geteval(state, action, obs, env::ArmHandPickup)
-    @boundscheck checkaxes(obsspace(env), obs)
-    obsspace(env)(obs).ball[3]
-end
-
-
-@propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::ArmHandPickup)
+@propagate_inbounds function LyceumBase.randreset!(rng::Random.AbstractRNG, env::ArmHandPickup)
     fastreset_nofwd!(env.sim)
     env.sim.d.qpos[1] = rand(rng, Uniform(-0.15, 0.15))
     env.sim.d.qpos[2] = rand(rng, Uniform(-0.1, 0.1))
