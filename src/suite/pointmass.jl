@@ -11,22 +11,22 @@ to the mass.
 * **Action: (2, )**
 * **Observation: (6, )**
 """
-struct PointMass{S <: MJSim, O} <: AbstractMuJoCoEnvironment
-    sim::S
-    obsspace::O
+struct PointMass{Sim, OSpace} <: AbstractMuJoCoEnvironment
+    sim::Sim
+    observationspace::OSpace
     function PointMass(sim::MJSim)
-        obsspace = MultiShape(
+        observationspace = MultiShape(
             agent_xy_pos = VectorShape(mjtNum, 2),
             agent_xy_vel = VectorShape(mjtNum, 2),
             target_xy_pos = VectorShape(mjtNum, 2)
         )
-        new{typeof(sim), typeof(obsspace)}(sim, obsspace)
+        new{typeof(sim), typeof(observationspace)}(sim, observationspace)
     end
 end
 
 PointMass() = first(tconstruct(PointMass, 1))
 
-function tconstruct(::Type{PointMass}, N::Integer)
+function LyceumBase.tconstruct(::Type{PointMass}, N::Integer)
     modelpath = joinpath(@__DIR__, "pointmass.xml")
     Tuple(PointMass(s) for s in tconstruct(MJSim, N, modelpath, skip=1))
 end
@@ -35,12 +35,12 @@ end
 @inline getsim(env::PointMass) = env.sim
 
 
-@inline obsspace(env::PointMass) = env.obsspace
+@inline LyceumBase.observationspace(env::PointMass) = env.observationspace
 
-@propagate_inbounds function getobs!(obs, env::PointMass)
-    @boundscheck checkaxes(obsspace(env), obs)
+@propagate_inbounds function LyceumBase.getobservation!(obs, env::PointMass)
+    @boundscheck checkaxes(observationspace(env), obs)
     dn = env.sim.dn
-    shaped = obsspace(env)(obs)
+    shaped = observationspace(env)(obs)
     @uviews shaped @inbounds begin
         shaped.agent_xy_pos .= dn.xpos[:x, :agent], dn.xpos[:y, :agent]
         shaped.agent_xy_vel .= dn.qvel[:agent_x], dn.qvel[:agent_y]
@@ -50,25 +50,16 @@ end
 end
 
 
-@propagate_inbounds function getreward(::Any, ::Any, obs, env::PointMass)
-    @boundscheck checkaxes(obsspace(env), obs)
-    shaped = obsspace(env)(obs)
+@propagate_inbounds function LyceumBase.getreward(::Any, ::Any, obs, env::PointMass)
+    @boundscheck checkaxes(observationspace(env), obs)
+    shaped = observationspace(env)(obs)
     @uviews shaped @inbounds begin
         1.0 - euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
     end
 end
 
 
-@propagate_inbounds function geteval(::Any, ::Any, obs, env::PointMass)
-    @boundscheck checkaxes(obsspace(env), obs)
-    shaped = obsspace(env)(obs)
-    @uviews shaped @inbounds begin
-        euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
-    end
-end
-
-
-@propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PointMass)
+@propagate_inbounds function LyceumBase.randreset!(rng::Random.AbstractRNG, env::PointMass)
     reset_nofwd!(env.sim)
     @inbounds begin
         env.sim.dn.qpos[:agent_x] = rand(rng) * 2.0 - 1.0

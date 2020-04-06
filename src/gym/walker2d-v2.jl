@@ -9,10 +9,10 @@ Control for Nonlinear Periodic Tasks"](https://homes.cs.washington.edu/~todorov/
 * **Action: (6, )**
 * **Observation: (7, )**
 """
-mutable struct Walker2DV2{SIM, S, O} <: AbstractMuJoCoEnvironment
-    sim::SIM
-    statespace::S
-    obsspace::O
+mutable struct Walker2DV2{Sim, SSpace, OSpace} <: AbstractMuJoCoEnvironment
+    sim::Sim
+    statespace::SSpace
+    observationspace::OSpace
     last_torso_x::Float64
     randreset_distribution::Uniform{Float64}
     function Walker2DV2(sim::MJSim)
@@ -33,7 +33,7 @@ end
 
 Walker2DV2() = first(tconstruct(Walker2DV2, 1))
 
-function tconstruct(::Type{Walker2DV2}, n::Integer)
+function LyceumBase.tconstruct(::Type{Walker2DV2}, n::Integer)
     modelpath = joinpath(@__DIR__, "walker2d.xml")
     Tuple(Walker2DV2(s) for s in tconstruct(MJSim, n, modelpath, skip=4))
 end
@@ -41,9 +41,9 @@ end
 @inline getsim(env::Walker2DV2) = env.sim
 
 
-@inline statespace(env::Walker2DV2) = env.statespace
+@inline LyceumBase.statespace(env::Walker2DV2) = env.statespace
 
-function getstate!(state, env::Walker2DV2)
+function LyceumBase.getstate!(state, env::Walker2DV2)
     checkaxes(statespace(env), state)
     @uviews state begin
         shaped = statespace(env)(state)
@@ -53,7 +53,7 @@ function getstate!(state, env::Walker2DV2)
     state
 end
 
-function setstate!(env::Walker2DV2, state)
+function LyceumBase.setstate!(env::Walker2DV2, state)
     checkaxes(statespace(env), state)
     @uviews state begin
         shaped = statespace(env)(state)
@@ -64,13 +64,13 @@ function setstate!(env::Walker2DV2, state)
 end
 
 
-@inline obsspace(env::Walker2DV2) = env.obsspace
+@inline LyceumBase.observationspace(env::Walker2DV2) = env.observationspace
 
-function getobs!(obs, env::Walker2DV2)
-    checkaxes(obsspace(env), obs)
+function LyceumBase.getobservation!(obs, env::Walker2DV2)
+    checkaxes(observationspace(env), obs)
     qpos = env.sim.d.qpos
     @views @uviews qpos obs begin
-        shaped = obsspace(env)(obs)
+        shaped = observationspace(env)(obs)
         copyto!(shaped.cropped_qpos, qpos[2:end])
         copyto!(shaped.qvel, env.sim.d.qvel)
         clamp!(shaped.qvel, -10, 10)
@@ -79,7 +79,7 @@ function getobs!(obs, env::Walker2DV2)
 end
 
 
-function getreward(state, action, ::Any, env::Walker2DV2)
+function LyceumBase.getreward(state, action, ::Any, env::Walker2DV2)
     checkaxes(statespace(env), state)
     checkaxes(actionspace(env), action)
     @uviews state begin
@@ -92,21 +92,14 @@ function getreward(state, action, ::Any, env::Walker2DV2)
     end
 end
 
-function geteval(state, ::Any, ::Any, env::Walker2DV2)
-    checkaxes(statespace(env), state)
-    @uviews state begin
-        _torso_x(statespace(env)(state), env)
-    end
-end
 
-
-function reset!(env::Walker2DV2)
+function LyceumBase.reset!(env::Walker2DV2)
     reset!(env.sim)
     env.last_torso_x = _torso_x(env)
     env
 end
 
-function randreset!(rng::AbstractRNG, env::Walker2DV2)
+function LyceumBase.randreset!(rng::AbstractRNG, env::Walker2DV2)
     reset_nofwd!(env.sim)
     perturb!(rng, env.randreset_distribution, env.sim.d.qpos)
     perturb!(rng, env.randreset_distribution, env.sim.d.qvel)
@@ -116,13 +109,13 @@ function randreset!(rng::AbstractRNG, env::Walker2DV2)
 end
 
 
-function step!(env::Walker2DV2)
+function LyceumBase.step!(env::Walker2DV2)
     env.last_torso_x = _torso_x(env)
     step!(env.sim)
     env
 end
 
-function isdone(state, ::Any, ::Any, env::Walker2DV2)
+function LyceumBase.isdone(state, o, env::Walker2DV2)
     checkaxes(statespace(env), state)
     @uviews state begin
         shapedstate = statespace(env)(state)

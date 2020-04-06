@@ -27,11 +27,11 @@ control problems](https://ieeexplore.ieee.org/document/6313077) (Barto et al., 1
 * **Action: (1, )**
 * **Observation: (5, )**
 """
-struct CartpoleSwingup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
-    sim::S
-    obsspace::O
+struct CartpoleSwingup{Sim,OSpace} <: AbstractMuJoCoEnvironment
+    sim::Sim
+    observationspace::OSpace
     function CartpoleSwingup(sim::MJSim)
-        obsspace = MultiShape(
+        observationspace = MultiShape(
             pos = MultiShape(
                 cart = ScalarShape(Float64),
                 pole_zz = ScalarShape(Float64),
@@ -42,29 +42,29 @@ struct CartpoleSwingup{S<:MJSim,O<:MultiShape} <: AbstractMuJoCoEnvironment
                 pole_ang = ScalarShape(Float64),
             ),
         )
-        env = new{typeof(sim), typeof(obsspace)}(sim, obsspace)
+        env = new{typeof(sim), typeof(observationspace)}(sim, observationspace)
         reset!(env)
     end
 end
 
 CartpoleSwingup() = first(tconstruct(CartpoleSwingup, 1))
 
-function tconstruct(::Type{CartpoleSwingup}, n::Integer)
+function LyceumBase.tconstruct(::Type{CartpoleSwingup}, n::Integer)
     modelpath = joinpath(@__DIR__, "cartpole.xml")
-    Tuple(CartpoleSwingup(s) for s in tconstruct(MJSim, n, modelpath))
+    [CartpoleSwingup(s) for s in tconstruct(MJSim, n, modelpath)]
 end
 
 
 @inline getsim(env::CartpoleSwingup) = env.sim
 
 
-@inline obsspace(env::CartpoleSwingup) = env.obsspace
+@inline LyceumBase.observationspace(env::CartpoleSwingup) = env.observationspace
 
-@inline function getobs!(obs, env::CartpoleSwingup)
-    @boundscheck checkaxes(obsspace(env), obs)
+@inline function LyceumBase.getobservation!(obs, env::CartpoleSwingup)
+    @boundscheck checkaxes(observationspace(env), obs)
 
     @uviews obs begin
-        sobs = obsspace(env)(obs)
+        sobs = observationspace(env)(obs)
         sobs.pos.cart = env.sim.dn.qpos[:slider]
         sobs.pos.pole_zz = env.sim.dn.xmat[:z, :z, :pole_1]
         sobs.pos.pole_xz = env.sim.dn.xmat[:x, :z, :pole_1]
@@ -74,14 +74,14 @@ end
 end
 
 
-@inline function getreward(state, action, obs, env::CartpoleSwingup)
+@inline function LyceumBase.getreward(state, action, obs, env::CartpoleSwingup)
     @boundscheck begin
         checkaxes(statespace(env), state)
         checkaxes(actionspace(env), action)
-        checkaxes(obsspace(env), obs)
+        checkaxes(observationspace(env), obs)
     end
 
-    sobs = obsspace(env)(obs)
+    sobs = observationspace(env)(obs)
 
     upright = (sobs.pos.pole_zz + 1) / 2
 
@@ -98,15 +98,7 @@ end
 end
 
 
-@inline function geteval(state, action, obs, env::CartpoleSwingup)
-    @boundscheck begin
-        checkaxes(obsspace(env), obs)
-    end
-    obsspace(env)(obs).pos.pole_zz
-end
-
-
-function reset!(env::CartpoleSwingup)
+function LyceumBase.reset!(env::CartpoleSwingup)
     reset_nofwd!(env.sim)
 
     qpos = env.sim.dn.qpos
@@ -119,7 +111,7 @@ function reset!(env::CartpoleSwingup)
     env
 end
 
-function randreset!(rng::Random.AbstractRNG, env::CartpoleSwingup)
+function LyceumBase.randreset!(rng::Random.AbstractRNG, env::CartpoleSwingup)
     reset_nofwd!(env.sim)
 
     qpos = env.sim.dn.qpos

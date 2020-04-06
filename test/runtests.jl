@@ -1,7 +1,7 @@
+using LyceumBase
 using LyceumDevTools.TestUtil
-using LyceumMuJoCo, LyceumBase
-using Test, Random, Shapes, Pkg, LinearAlgebra, BenchmarkTools
-using MuJoCo: TESTMODELXML
+using LyceumMuJoCo
+using Test
 
 const LYCEUM_SUITE = [
     (LyceumMuJoCo.PointMass, (), ()),
@@ -25,11 +25,9 @@ function test_group(group)
 end
 
 @testset "LyceumMuJoCo.jl" begin
-
     @testset "Environments" begin
         @testset "Lyceum Suite" begin test_group(LYCEUM_SUITE) end
         @testset "Gym" begin test_group(GYM) end
         @testset "DMC" begin test_group(DMC) end
     end
-
 end

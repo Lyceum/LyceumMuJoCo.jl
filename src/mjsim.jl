@@ -43,7 +43,7 @@ struct MJSim{MN, DN, S, SE, A}
 
     # internal
     statespace::S
-    obsspace::SE
+    observationspace::SE
     actionspace::A
 
     @doc """
@@ -70,9 +70,9 @@ struct MJSim{MN, DN, S, SE, A}
               shape = dof == 1 ? ScalarShape(mjtNum) : VectorShape(mjtNum, dof)
               name => shape
             end
-            obsspace = MultiShape(nameshapes...)
+            observationspace = MultiShape(nameshapes...)
         else
-            obsspace = VectorShape(mjtNum, 0)
+            observationspace = VectorShape(mjtNum, 0)
         end
 
         if m.nu > 0
@@ -92,9 +92,9 @@ struct MJSim{MN, DN, S, SE, A}
             ndims(field) > 1 ? vec(field) : field
         end
 
-    	sim = new{typeof(m_named), typeof(d_named), typeof(statespace), typeof(obsspace), typeof(actionspace)}(m, d, m_named, d_named,
+    	sim = new{typeof(m_named), typeof(d_named), typeof(statespace), typeof(observationspace), typeof(actionspace)}(m, d, m_named, d_named,
             initstate, skip,
-            statespace, obsspace, actionspace)
+            statespace, observationspace, actionspace)
 
         forward!(sim)
     end
@@ -133,7 +133,7 @@ end
 
 Return a description of `sim`'s statespace.
 """
-@inline statespace(sim::MJSim) = sim.statespace
+@inline LyceumBase.statespace(sim::MJSim) = sim.statespace
 
 """
     $(SIGNATURES)
@@ -143,7 +143,7 @@ Copy the following state fields from `sim.d` into `state`:
 ($(join(map(string, MJSTATE_FIELDS), ", ")))
 ```
 """
-@propagate_inbounds function getstate!(state::RealVec, sim::MJSim)
+@propagate_inbounds function LyceumBase.getstate!(state::RealVec, sim::MJSim)
     @boundscheck checkaxes(statespace(sim), state)
     shaped = statespace(sim)(state)
     @uviews shaped begin _copyshaped!(shaped, sim.d) end
@@ -158,7 +158,7 @@ Return a flattened vector of the following state fields from `sim.d`:
 ($(join(map(string, MJSTATE_FIELDS), ", ")))
 ```
 """
-@propagate_inbounds getstate(sim::MJSim) = getstate!(allocate(statespace(sim)), sim)
+@propagate_inbounds LyceumBase.getstate(sim::MJSim) = getstate!(allocate(statespace(sim)), sim)
 
 
 # Two things to note about MuJoCo state:
@@ -188,7 +188,7 @@ Copy the components of `state` to their respective fields in `sim.d`, namely:
 ($(join(map(string, MJSTATE_FIELDS), ", ")))
 ```
 """
-@propagate_inbounds function setstate!(sim::MJSim, state::RealVec)
+@propagate_inbounds function LyceumBase.setstate!(sim::MJSim, state::RealVec)
     mj_resetData(sim.m, sim.d)
     copystate!(sim, state)
     forward!(sim)
@@ -222,15 +222,15 @@ end
 
 Return a description of `sim`'s observation space.
 """
-@inline obsspace(sim::MJSim) = sim.obsspace
+@inline LyceumBase.observationspace(sim::MJSim) = sim.observationspace
 
 """
     $(SIGNATURES)
 
 Copy `sim.d.sensordata` into `obs`.
 """
-@propagate_inbounds function getobs!(obs::RealVec, sim::MJSim)
-    @boundscheck checkaxes(obsspace(sim), obs)
+@propagate_inbounds function LyceumBase.getobservation!(obs::RealVec, sim::MJSim)
+    @boundscheck checkaxes(observationspace(sim), obs)
     @inbounds copyto!(obs, sim.d.sensordata)
 end
 
@@ -239,7 +239,7 @@ end
 
 Return a copy of `sim.d.sensordata`.
 """
-@propagate_inbounds getobs(sim::MJSim) = getobs!(allocate(sim.obsspace), sim)
+@propagate_inbounds LyceumBase.getobservation(sim::MJSim) = getobservation!(allocate(sim.observationspace), sim)
 
 
 """
@@ -247,14 +247,14 @@ Return a copy of `sim.d.sensordata`.
 
 Return a description of `sim`'s action space.
 """
-@inline actionspace(sim::MJSim) = sim.actionspace
+@inline LyceumBase.actionspace(sim::MJSim) = sim.actionspace
 
 """
     $(TYPEDSIGNATURES)
 
 Copy `sim.d.ctrl` into `action`.
 """
-@propagate_inbounds function getaction!(action::RealVec, sim::MJSim)
+@propagate_inbounds function LyceumBase.getaction!(action::RealVec, sim::MJSim)
     @boundscheck checkaxes(actionspace(sim), action)
     @inbounds copyto!(action, sim.d.ctrl)
 end
@@ -264,14 +264,14 @@ end
 
 Return a copy of `sim.d.ctrl`.
 """
-@propagate_inbounds getaction(sim::MJSim, action::RealVec) = getaction!(allocate(sim.actionspace), sim)
+@propagate_inbounds LyceumBase.getaction(sim::MJSim, action::RealVec) = getaction!(allocate(sim.actionspace), sim)
 
 """
     $(TYPEDSIGNATURES)
 
 Copy `action` into `sim.d.ctrl` into `action` and compute the new forward dynamics.
 """
-@propagate_inbounds function setaction!(sim::MJSim, action::RealVec)
+@propagate_inbounds function LyceumBase.setaction!(sim::MJSim, action::RealVec)
     forwardskip!(setaction_nofwd!(sim, action), MJCore.mjSTAGE_VEL)
 end
 
@@ -282,7 +282,7 @@ end
 end
 
 
-@inline reset!(sim::MJSim) = forward!(reset_nofwd!(sim))
+@inline LyceumBase.reset!(sim::MJSim) = forward!(reset_nofwd!(sim))
 @inline reset_nofwd!(sim::MJSim) = (mj_resetData(sim.m, sim.d); sim)
 
 # typically 2-3x faster than reset!
@@ -301,7 +301,7 @@ Step the simulation by `skip` steps, where `skip` defaults to `sim.skip`.
 State-dependent controls (e.g. the `ctrl`, `xfrc_applied`, `qfrc_applied`
 fields of `sim.d`) should be set before calling `step!`.
 """
-function step!(sim::MJSim, skip::Integer=sim.skip)
+function LyceumBase.step!(sim::MJSim, skip::Integer=sim.skip)
     check_skip(skip)
     # According to MuJoCo docs order must be:
     # 1. mj_step1
@@ -385,7 +385,7 @@ end
 
 Return the effective timestep of `sim`. Equivalent to `sim.skip * sim.m.opt.timestep`.
 """
-@inline timestep(sim::MJSim) = sim.m.opt.timestep * sim.skip
+@inline LyceumBase.timestep(sim::MJSim) = sim.m.opt.timestep * sim.skip
 
 """
     $(TYPEDSIGNATURES)
