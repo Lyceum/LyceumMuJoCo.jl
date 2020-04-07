@@ -35,7 +35,7 @@ modified by klowrey
         <!-- Target -->
         <!-- <site name="target" pos="1.0 0 .05" rgba="0.6 0.2 0.2 0.2" size=".07" type="sphere" /> -->
         <body name="target" pos="1 0 .05">
-            <joint axis="1 0 0" name="target_x" pos="0 0 0" range="-1.4 1.4" stiffness="0" type="slide"/>
+            <joint axis="1 0 0" name="target_x" pos="0 0 0" range="-1.4 1.4" ref="1" stiffness="0" type="slide"/>
             <joint axis="0 1 0" name="target_y" pos="0 0 0" range="-1.4 1.4" stiffness="0" type="slide"/>
             <geom conaffinity="0" contype="0" name="target" pos="0 0 0" rgba="0.6 0.2 0.2 0.2" size=".07" type="sphere"/>
         </body>
