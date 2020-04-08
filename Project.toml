@@ -1,7 +1,7 @@
 name = "LyceumMuJoCo"
 uuid = "48b9757e-04b8-4dbf-b6ed-75c13d9e4026"
 authors = ["Colin Summers", "The Contributors of LyceumMuJoCo"]
-version = "0.2.2"
+version = "0.3.0-DEV"
 
 [deps]
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
