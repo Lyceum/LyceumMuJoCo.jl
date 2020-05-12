@@ -8,4 +8,5 @@ SpecialArrays = "dced3ab1-7816-4ad4-9c7c-956aa26e9cbf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-LyceumDevTools = "0.4"
+BenchmarkTools = "0.5"
+SpecialArrays = "0.3"
