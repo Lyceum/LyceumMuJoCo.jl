@@ -338,12 +338,6 @@ repo-url = "https://github.com/Lyceum/LyceumBase.jl.git"
 uuid = "db31fed1-ca1e-4084-8a49-12fae1996a55"
 version = "0.3.0-DEV"
 
-[[LyceumCore]]
-deps = ["StaticNumbers"]
-git-tree-sha1 = "28ace31199a3f42d6f0257921710babc95cbe306"
-uuid = "e5bd5517-2193-49f0-ba9c-d5a8508cb639"
-version = "0.1.1"
-
 [[LyceumDevTools]]
 deps = ["Base64", "BenchmarkTools", "Dates", "Distributed", "GitHub", "HTTP", "JuliaFormatter", "LibGit2", "LyceumBase", "MacroTools", "Markdown", "Pkg", "PkgTemplates", "Random", "Registrator", "RegistryTools", "Shapes", "Test", "UUIDs", "UnPack"]
 git-tree-sha1 = "4d33b79d0ec94868f2565b1d8123cfe7d768012a"
@@ -353,7 +347,7 @@ uuid = "fd23256c-5a67-41c4-8f5a-c8cf5526e505"
 version = "0.5.2"
 
 [[LyceumMuJoCo]]
-deps = ["Distances", "Distributions", "DocStringExtensions", "LinearAlgebra", "LyceumBase", "LyceumCore", "LyceumDevTools", "MuJoCo", "Random", "Reexport", "Shapes", "StaticArrays", "Statistics", "UnsafeArrays"]
+deps = ["Distances", "Distributions", "DocStringExtensions", "LinearAlgebra", "LyceumBase", "MuJoCo", "Random", "Reexport", "Shapes", "StaticArrays", "Statistics", "UnsafeArrays"]
 path = ".."
 uuid = "48b9757e-04b8-4dbf-b6ed-75c13d9e4026"
 version = "0.3.0-DEV"
@@ -588,12 +582,6 @@ deps = ["LinearAlgebra", "Random", "Statistics"]
 git-tree-sha1 = "5c06c0aeb81bef54aed4b3f446847905eb6cbda0"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
 version = "0.12.3"
-
-[[StaticNumbers]]
-deps = ["Requires"]
-git-tree-sha1 = "8fedba0c674686bfa52dba5f68acf916b824f53a"
-uuid = "c5e4b96a-f99f-5557-8ed2-dc63ef9b5131"
-version = "0.3.2"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
