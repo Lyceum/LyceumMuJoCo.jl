@@ -107,7 +107,7 @@ end
         shaped.palm .= palm .- ball
 
         shaped.handball = _sitedist(palm, ball, dmin)
-        shaped.ballgoal = _sitedist(ball, goal, dmin)
+        shaped.ballgoal = _sitedist(ball, env.goal, dmin)
 
         shaped.d_thumb = _sitedist(thumb, ball, dmin)
         shaped.d_index = _sitedist(index, ball, dmin)
