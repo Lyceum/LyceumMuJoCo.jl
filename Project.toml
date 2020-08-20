@@ -1,7 +1,7 @@
 name = "LyceumMuJoCo"
 uuid = "48b9757e-04b8-4dbf-b6ed-75c13d9e4026"
 authors = ["Colin Summers", "The Contributors of LyceumMuJoCo"]
-version = "0.2.2"
+version = "0.2.3"
 
 [deps]
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
@@ -19,7 +19,7 @@ UnsafeArrays = "c4a57d5a-5b31-53a6-b365-19f8c011fbd6"
 
 [compat]
 Distances = "0.8"
-Distributions = "0.22"
+Distributions = "0.23"
 DocStringExtensions = "0.8"
 LyceumBase = "0.2"
 MuJoCo = "0.3"
