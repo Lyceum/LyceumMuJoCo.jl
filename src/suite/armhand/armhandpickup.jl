@@ -75,7 +75,7 @@ ArmHandPickup() = first(tconstruct(ArmHandPickup, 1))
 
 function tconstruct(::Type{ArmHandPickup}, n::Integer)
     modelpath = joinpath(@__DIR__, "armhand.xml")
-    Tuple(ArmHandPickup(s) for s in tconstruct(MJSim, n, modelpath, skip = 3))
+    Tuple(ArmHandPickup(s) for s in tconstruct(MJSim, n, modelpath;))#, skip = 3))
 end
 
 
@@ -100,7 +100,7 @@ end
     pinky = SPoint3D(sx, env.pinky)
     goal = ball - env.goal
 
-    @uviews obs @inbounds begin
+    @inbounds begin
         shaped = obsspace(env)(obs)
 
         shaped.ball .= ball

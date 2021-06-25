@@ -65,7 +65,7 @@ struct MJSim{MN, DN, S, SE, A}
         if m.nsensor > 0
             nameshapes = map(1:m.nsensor) do id
               name = jl_id2name(m, MJCore.mjOBJ_SENSOR, id)
-              name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
+              name = isnothing(name) ? Symbol("sensor_$id") : Symbol(name)
               dof = m.sensor_dim[id]
               shape = dof == 1 ? ScalarShape(mjtNum) : VectorShape(mjtNum, dof)
               name => shape
@@ -79,7 +79,7 @@ struct MJSim{MN, DN, S, SE, A}
             clampctrl = !jl_disabled(m, MJCore.mjDSBL_CLAMPCTRL)
             nameshapes = map(1:m.nu) do id
                 name = jl_id2name(m, MJCore.mjOBJ_ACTUATOR, id)
-                name = isnothing(name) ? Symbol("unnamed_$id") : Symbol(name)
+                name = isnothing(name) ? Symbol("action_$id") : Symbol(name)
                 name => ScalarShape(mjtNum) #TODO boundedshape
             end
             actionspace = MultiShape(nameshapes...)
@@ -146,7 +146,8 @@ Copy the following state fields from `sim.d` into `state`:
 @propagate_inbounds function getstate!(state::RealVec, sim::MJSim)
     @boundscheck checkaxes(statespace(sim), state)
     shaped = statespace(sim)(state)
-    @uviews shaped begin _copyshaped!(shaped, sim.d) end
+    #@uviews shaped begin _copyshaped!(shaped, sim.d) end
+    _copyshaped!(shaped, sim.d)
     state
 end
 
