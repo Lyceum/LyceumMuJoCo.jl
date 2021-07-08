@@ -6,6 +6,7 @@ using Test
 const LYCEUM_SUITE = [
     (LyceumMuJoCo.PointMass, (), ()),
     (LyceumMuJoCo.ArmHandPickup, (), ()),
+    (LyceumMuJoCo.HumanoidGetup, (), ()),
 ]
 
 const GYM = [
