@@ -41,37 +41,30 @@ function tconstruct(::Type{HopperV2}, n::Integer)
 end
 
 @inline getsim(env::HopperV2) = env.sim
-
-
 @inline statespace(env::HopperV2) = env.statespace
 
 function getstate!(state, env::HopperV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shaped = statespace(env)(state)
-        getstate!(shaped.simstate, env.sim)
-        shaped.last_torso_x = env.last_torso_x
-    end
+    shaped = statespace(env)(state)
+    getstate!(shaped.simstate, env.sim)
+    shaped.last_torso_x = env.last_torso_x
     state
 end
 
 function setstate!(env::HopperV2, state)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shaped = statespace(env)(state)
-        setstate!(env.sim, shaped.simstate)
-        env.last_torso_x = shaped.last_torso_x
-    end
+    shaped = statespace(env)(state)
+    setstate!(env.sim, shaped.simstate)
+    env.last_torso_x = shaped.last_torso_x
     env
 end
-
 
 @inline obsspace(env::HopperV2) = env.obsspace
 
 function getobs!(obs, env::HopperV2)
     checkaxes(obsspace(env), obs)
     qpos = env.sim.d.qpos
-    @views @uviews qpos obs begin
+    @views begin
         shaped = obsspace(env)(obs)
         copyto!(shaped.cropped_qpos, qpos[2:end])
         copyto!(shaped.qvel, env.sim.d.qvel)
@@ -80,27 +73,21 @@ function getobs!(obs, env::HopperV2)
     obs
 end
 
-
 function getreward(state, action, ::Any, env::HopperV2)
     checkaxes(statespace(env), state)
     checkaxes(actionspace(env), action)
-    @uviews state begin
-        shapedstate = statespace(env)(state)
-        alive_bonus = 1.0
-        reward = (_torso_x(shapedstate, env) - shapedstate.last_torso_x) / timestep(env)
-        reward += alive_bonus
-        reward -= 1e-3 * sum(x->x^2, action)
-        reward
-    end
+    shapedstate = statespace(env)(state)
+    alive_bonus = 1.0
+    reward = (_torso_x(shapedstate, env) - shapedstate.last_torso_x) / timestep(env)
+    reward += alive_bonus
+    reward -= 1e-3 * sum(x->x^2, action)
+    reward
 end
 
 function geteval(state, ::Any, ::Any, env::HopperV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        _torso_x(statespace(env)(state), env)
-    end
+    _torso_x(statespace(env)(state), env)
 end
-
 
 function reset!(env::HopperV2)
     reset!(env.sim)
@@ -117,7 +104,6 @@ function randreset!(rng::AbstractRNG, env::HopperV2)
     env
 end
 
-
 function step!(env::HopperV2)
     env.last_torso_x = _torso_x(env)
     step!(env.sim)
@@ -126,23 +112,21 @@ end
 
 function isdone(state, ::Any, ::Any, env::HopperV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shapedstate = statespace(env)(state)
-        torso_x = _torso_x(shapedstate, env)
-        height = _torso_height(shapedstate, env)
-        torso_ang = _torso_ang(shapedstate, env)
-        qpos = shapedstate.simstate.qpos
-        qvel = shapedstate.simstate.qvel
+    shapedstate = statespace(env)(state)
+    torso_x = _torso_x(shapedstate, env)
+    height = _torso_height(shapedstate, env)
+    torso_ang = _torso_ang(shapedstate, env)
+    qpos = shapedstate.simstate.qpos
+    qvel = shapedstate.simstate.qvel
 
-        done = !(
-            all(isfinite, state)
-            && all(x->abs(x) < 100, uview(qpos, 3:length(qpos)))
-            && all(x->abs(x) < 100, uview(qvel))
-            && height > 0.7
-            && abs(torso_ang) < 0.2
-        )
-        done
-    end
+    done = !(
+             all(isfinite, state)
+             && all(x->abs(x) < 100, view(qpos, 3:length(qpos)))
+             && all(x->abs(x) < 100, qvel)
+             && height > 0.7
+             && abs(torso_ang) < 0.2
+            )
+    done
 end
 
 @inline _torso_x(shapedstate::ShapedView, ::HopperV2) = shapedstate.simstate.qpos[1]

@@ -42,37 +42,30 @@ function tconstruct(::Type{SwimmerV2}, n::Integer)
 end
 
 @inline getsim(env::SwimmerV2) = env.sim
-
-
 @inline statespace(env::SwimmerV2) = env.statespace
 
 function getstate!(state, env::SwimmerV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shaped = statespace(env)(state)
-        getstate!(shaped.simstate, env.sim)
-        shaped.last_torso_x = env.last_torso_x
-    end
+    shaped = statespace(env)(state)
+    getstate!(shaped.simstate, env.sim)
+    shaped.last_torso_x = env.last_torso_x
     state
 end
 
 function setstate!(env::SwimmerV2, state)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shaped = statespace(env)(state)
-        setstate!(env.sim, shaped.simstate)
-        env.last_torso_x = shaped.last_torso_x
-    end
+    shaped = statespace(env)(state)
+    setstate!(env.sim, shaped.simstate)
+    env.last_torso_x = shaped.last_torso_x
     env
 end
-
 
 @inline obsspace(env::SwimmerV2) = env.obsspace
 
 function getobs!(obs, env::SwimmerV2)
     checkaxes(obsspace(env), obs)
     qpos = env.sim.d.qpos
-    @views @uviews obs qpos begin
+    @views begin
         shaped = obsspace(env)(obs)
         copyto!(shaped.qpos_cropped, qpos[3:end])
         copyto!(shaped.qvel, env.sim.d.qvel)
@@ -80,23 +73,18 @@ function getobs!(obs, env::SwimmerV2)
     obs
 end
 
-
 function getreward(state, action, ::Any, env::SwimmerV2)
     checkaxes(statespace(env), state)
     checkaxes(actionspace(env), action)
-    @uviews state begin
-        shapedstate = statespace(env)(state)
-        reward_fwd = (_torso_x(shapedstate, env) - shapedstate.last_torso_x) / timestep(env)
-        reward_ctrl = -1e-4 * sum(x->x^2, action)
-        reward_fwd + reward_ctrl
-    end
+    shapedstate = statespace(env)(state)
+    reward_fwd = (_torso_x(shapedstate, env) - shapedstate.last_torso_x) / timestep(env)
+    reward_ctrl = -1e-4 * sum(x->x^2, action)
+    reward_fwd + reward_ctrl
 end
 
 function geteval(state, action, obs, env::SwimmerV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        _torso_x(statespace(env)(state), env)
-    end
+    _torso_x(statespace(env)(state), env)
 end
 
 

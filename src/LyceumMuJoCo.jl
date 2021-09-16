@@ -8,7 +8,6 @@ using LinearAlgebra
 using Random
 
 # 3rd party
-using UnsafeArrays
 using StaticArrays
 using Distributions
 using Reexport

@@ -45,21 +45,17 @@ end
 
 function getstate!(state, env::Walker2DV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shaped = statespace(env)(state)
-        getstate!(shaped.simstate, env.sim)
-        shaped.last_torso_x = env.last_torso_x
-    end
+    shaped = statespace(env)(state)
+    getstate!(shaped.simstate, env.sim)
+    shaped.last_torso_x = env.last_torso_x
     state
 end
 
 function setstate!(env::Walker2DV2, state)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shaped = statespace(env)(state)
-        setstate!(env.sim, shaped.simstate)
-        env.last_torso_x = shaped.last_torso_x
-    end
+    shaped = statespace(env)(state)
+    setstate!(env.sim, shaped.simstate)
+    env.last_torso_x = shaped.last_torso_x
     env
 end
 
@@ -69,7 +65,7 @@ end
 function getobs!(obs, env::Walker2DV2)
     checkaxes(obsspace(env), obs)
     qpos = env.sim.d.qpos
-    @views @uviews qpos obs begin
+    @views begin
         shaped = obsspace(env)(obs)
         copyto!(shaped.cropped_qpos, qpos[2:end])
         copyto!(shaped.qvel, env.sim.d.qvel)
@@ -82,21 +78,17 @@ end
 function getreward(state, action, ::Any, env::Walker2DV2)
     checkaxes(statespace(env), state)
     checkaxes(actionspace(env), action)
-    @uviews state begin
-        shapedstate = statespace(env)(state)
-        alive_bonus = 1.0
-        reward = (_torso_x(shapedstate, env) - shapedstate.last_torso_x) / timestep(env)
-        reward += alive_bonus
-        reward -= 1e-3 * sum(x->x^2, action)
-        reward
-    end
+    shapedstate = statespace(env)(state)
+    alive_bonus = 1.0
+    reward = (_torso_x(shapedstate, env) - shapedstate.last_torso_x) / timestep(env)
+    reward += alive_bonus
+    reward -= 1e-3 * sum(x->x^2, action)
+    reward
 end
 
 function geteval(state, ::Any, ::Any, env::Walker2DV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        _torso_x(statespace(env)(state), env)
-    end
+    _torso_x(statespace(env)(state), env)
 end
 
 
@@ -124,21 +116,19 @@ end
 
 function isdone(state, ::Any, ::Any, env::Walker2DV2)
     checkaxes(statespace(env), state)
-    @uviews state begin
-        shapedstate = statespace(env)(state)
-        torso_x = _torso_x(shapedstate, env)
-        height = _torso_height(shapedstate, env)
-        torso_ang = _torso_ang(shapedstate, env)
-        qpos = shapedstate.simstate.qpos
-        qvel = shapedstate.simstate.qvel
+    shapedstate = statespace(env)(state)
+    torso_x = _torso_x(shapedstate, env)
+    height = _torso_height(shapedstate, env)
+    torso_ang = _torso_ang(shapedstate, env)
+    qpos = shapedstate.simstate.qpos
+    qvel = shapedstate.simstate.qvel
 
-        done = !(
-            height > 0.8
-            && height < 2.0
-            && abs(torso_ang) < 1.0
-        )
-        done
-    end
+    done = !(
+             height > 0.8
+             && height < 2.0
+             && abs(torso_ang) < 1.0
+            )
+    done
 end
 
 @inline _torso_x(shapedstate::ShapedView, ::Walker2DV2) = shapedstate.simstate.qpos[1]

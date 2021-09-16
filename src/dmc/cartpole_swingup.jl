@@ -56,23 +56,18 @@ end
 
 
 @inline getsim(env::CartpoleSwingup) = env.sim
-
-
 @inline obsspace(env::CartpoleSwingup) = env.obsspace
 
 @inline function getobs!(obs, env::CartpoleSwingup)
     @boundscheck checkaxes(obsspace(env), obs)
 
-    @uviews obs begin
-        sobs = obsspace(env)(obs)
-        sobs.pos.cart = env.sim.dn.qpos[:slider]
-        sobs.pos.pole_zz = env.sim.dn.xmat[:z, :z, :pole_1]
-        sobs.pos.pole_xz = env.sim.dn.xmat[:x, :z, :pole_1]
-        copyto!(sobs.vel, env.sim.d.qvel)
-    end
+    sobs = obsspace(env)(obs)
+    sobs.pos.cart = env.sim.dn.qpos[:slider]
+    sobs.pos.pole_zz = env.sim.dn.xmat[:z, :z, :pole_1]
+    sobs.pos.pole_xz = env.sim.dn.xmat[:x, :z, :pole_1]
+    copyto!(sobs.vel, env.sim.d.qvel)
     obs
 end
-
 
 @inline function getreward(state, action, obs, env::CartpoleSwingup)
     @boundscheck begin
@@ -97,7 +92,6 @@ end
     mean(upright) * small_control * small_velocity * centered
 end
 
-
 @inline function geteval(state, action, obs, env::CartpoleSwingup)
     @boundscheck begin
         checkaxes(obsspace(env), obs)
@@ -105,14 +99,11 @@ end
     obsspace(env)(obs).pos.pole_zz
 end
 
-
 function reset!(env::CartpoleSwingup)
     reset_nofwd!(env.sim)
 
     qpos = env.sim.dn.qpos
-    @uviews qpos begin
-        qpos[:hinge_1] = pi
-    end
+    qpos[:hinge_1] = pi
 
     forward!(env.sim)
 
@@ -123,10 +114,8 @@ function randreset!(rng::Random.AbstractRNG, env::CartpoleSwingup)
     reset_nofwd!(env.sim)
 
     qpos = env.sim.dn.qpos
-    @uviews qpos begin
-        qpos[:slider] = 0.01 * randn(rng)
-        qpos[:hinge_1] = pi + 0.01*randn(rng)
-    end
+    qpos[:slider] = 0.01 * randn(rng)
+    qpos[:hinge_1] = pi + 0.01*randn(rng)
 
     randn!(rng, env.sim.d.qvel)
     env.sim.d.qvel .*= 0.01

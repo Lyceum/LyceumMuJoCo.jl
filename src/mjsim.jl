@@ -146,7 +146,7 @@ Copy the following state fields from `sim.d` into `state`:
 @propagate_inbounds function getstate!(state::RealVec, sim::MJSim)
     @boundscheck checkaxes(statespace(sim), state)
     shaped = statespace(sim)(state)
-    @uviews shaped begin _copyshaped!(shaped, sim.d) end
+    _copyshaped!(shaped, sim.d)
     state
 end
 
@@ -193,14 +193,14 @@ Copy the components of `state` to their respective fields in `sim.d`, namely:
     copystate!(sim, state)
     forward!(sim)
     shaped = statespace(sim)(state)
-    @uviews shaped begin copyto!(sim.d.qacc_warmstart, shaped.qacc_warmstart) end
+    copyto!(sim.d.qacc_warmstart, shaped.qacc_warmstart)
     sim
 end
 
 @propagate_inbounds function copystate!(sim::MJSim, state::RealVec)
     @boundscheck checkaxes(statespace(sim), state)
     shaped = @inbounds statespace(sim)(state)
-    @uviews shaped begin _copyshaped!(sim.d, shaped) end
+    _copyshaped!(sim.d, shaped)
     sim
 end
 
@@ -350,9 +350,9 @@ function masscenter(sim::MJSim)
     mcntr = zeros(SVector{3, Float64})
     mtotal = 0.0
     body_mass, xipos = sim.m.body_mass, sim.d.xipos
-    @uviews xipos for i=1:sim.m.nbody
+    for i=1:sim.m.nbody
         bmass = body_mass[i]
-        bodycom = SVector{3, Float64}(uview(xipos, :, i))
+        bodycom = SVector{3, Float64}(xipos[1,i],xipos[2,i],xipos[3,i])
         mcntr = mcntr + bmass * bodycom
         mtotal += bmass
     end

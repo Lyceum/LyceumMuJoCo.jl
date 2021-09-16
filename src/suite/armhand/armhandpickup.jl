@@ -100,7 +100,7 @@ end
     pinky = SPoint3D(sx, env.pinky)
     goal = ball - env.goal
 
-    @uviews obs @inbounds begin
+    @inbounds begin
         shaped = obsspace(env)(obs)
 
         shaped.ball .= ball

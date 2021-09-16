@@ -31,17 +31,14 @@ function tconstruct(::Type{PointMass}, N::Integer)
     Tuple(PointMass(s) for s in tconstruct(MJSim, N, modelpath, skip=1))
 end
 
-
 @inline getsim(env::PointMass) = env.sim
-
-
 @inline obsspace(env::PointMass) = env.obsspace
 
 @propagate_inbounds function getobs!(obs, env::PointMass)
     @boundscheck checkaxes(obsspace(env), obs)
     dn = env.sim.dn
     shaped = obsspace(env)(obs)
-    @uviews shaped @inbounds begin
+    @inbounds begin
         shaped.agent_xy_pos .= dn.xpos[:x, :agent], dn.xpos[:y, :agent]
         shaped.agent_xy_vel .= dn.qvel[:agent_x], dn.qvel[:agent_y]
         shaped.target_xy_pos .= dn.xpos[:x, :target], dn.xpos[:y, :target]
@@ -49,24 +46,21 @@ end
     obs
 end
 
-
 @propagate_inbounds function getreward(::Any, ::Any, obs, env::PointMass)
     @boundscheck checkaxes(obsspace(env), obs)
     shaped = obsspace(env)(obs)
-    @uviews shaped @inbounds begin
+    @inbounds begin
         1.0 - euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
     end
 end
 
-
 @propagate_inbounds function geteval(::Any, ::Any, obs, env::PointMass)
     @boundscheck checkaxes(obsspace(env), obs)
     shaped = obsspace(env)(obs)
-    @uviews shaped @inbounds begin
+    @inbounds begin
         euclidean(shaped.agent_xy_pos, shaped.target_xy_pos)
     end
 end
-
 
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PointMass)
     reset_nofwd!(env.sim)
