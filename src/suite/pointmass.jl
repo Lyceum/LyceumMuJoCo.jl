@@ -39,9 +39,9 @@ end
     dn = env.sim.dn
     shaped = obsspace(env)(obs)
     @inbounds begin
-        shaped.agent_xy_pos .= dn.xpos[:x, :agent], dn.xpos[:y, :agent]
-        shaped.agent_xy_vel .= dn.qvel[:agent_x], dn.qvel[:agent_y]
-        shaped.target_xy_pos .= dn.xpos[:x, :target], dn.xpos[:y, :target]
+        shaped.agent_xy_pos .= dn.xpos[Val(:x), Val(:agent)], dn.xpos[Val(:y), Val(:agent)]
+        shaped.agent_xy_vel .= dn.qvel[Val(:agent_x)], dn.qvel[Val(:agent_y)]
+        shaped.target_xy_pos .= dn.xpos[Val(:x), Val(:target)], dn.xpos[Val(:y), Val(:target)]
     end
     obs
 end
@@ -65,10 +65,10 @@ end
 @propagate_inbounds function randreset!(rng::Random.AbstractRNG, env::PointMass)
     reset_nofwd!(env.sim)
     @inbounds begin
-        env.sim.dn.qpos[:agent_x] = rand(rng) * 2.0 - 1.0
-        env.sim.dn.qpos[:agent_y] = rand(rng) * 2.0 - 1.0
-        env.sim.dn.qpos[:target_x] = rand(rng) * 2.0 - 1.0
-        env.sim.dn.qpos[:target_y] = rand(rng) * 2.0 - 1.0
+        env.sim.dn.qpos[Val(:agent_x)] = rand(rng) * 2.0 - 1.0
+        env.sim.dn.qpos[Val(:agent_y)] = rand(rng) * 2.0 - 1.0
+        env.sim.dn.qpos[Val(:target_x)] = rand(rng) * 2.0 - 1.0
+        env.sim.dn.qpos[Val(:target_y)] = rand(rng) * 2.0 - 1.0
     end
     forward!(env.sim)
     env

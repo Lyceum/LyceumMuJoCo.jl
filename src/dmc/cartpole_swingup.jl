@@ -62,9 +62,9 @@ end
     @boundscheck checkaxes(obsspace(env), obs)
 
     sobs = obsspace(env)(obs)
-    sobs.pos.cart = env.sim.dn.qpos[:slider]
-    sobs.pos.pole_zz = env.sim.dn.xmat[:z, :z, :pole_1]
-    sobs.pos.pole_xz = env.sim.dn.xmat[:x, :z, :pole_1]
+    sobs.pos.cart = env.sim.dn.qpos[Val(:slider)]
+    sobs.pos.pole_zz = env.sim.dn.xmat[Val(:z), Val(:z), Val(:pole_1)]
+    sobs.pos.pole_xz = env.sim.dn.xmat[Val(:x), Val(:z), Val(:pole_1)]
     copyto!(sobs.vel, env.sim.d.qvel)
     obs
 end
@@ -103,7 +103,7 @@ function reset!(env::CartpoleSwingup)
     reset_nofwd!(env.sim)
 
     qpos = env.sim.dn.qpos
-    qpos[:hinge_1] = pi
+    qpos[Val(:hinge_1)] = pi
 
     forward!(env.sim)
 
@@ -114,8 +114,8 @@ function randreset!(rng::Random.AbstractRNG, env::CartpoleSwingup)
     reset_nofwd!(env.sim)
 
     qpos = env.sim.dn.qpos
-    qpos[:slider] = 0.01 * randn(rng)
-    qpos[:hinge_1] = pi + 0.01*randn(rng)
+    qpos[Val(:slider)] = 0.01 * randn(rng)
+    qpos[Val(:hinge_1)] = pi + 0.01*randn(rng)
 
     randn!(rng, env.sim.d.qvel)
     env.sim.d.qvel .*= 0.01
